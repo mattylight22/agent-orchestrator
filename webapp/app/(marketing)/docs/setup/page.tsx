@@ -45,7 +45,7 @@ export default function SetupPage() {
       <ol className="setup-steps">
         <li><span>1</span><div><h3>Install Paseo</h3><p>Install Node.js 22 or newer, then install the current headless Paseo CLI.</p><Code>{"npm install -g @getpaseo/cli\npaseo daemon start"}</Code><External href="https://paseo.sh/docs">Paseo getting started</External></div></li>
         <li><span>2</span><div><h3>Install and sign in to at least one agent CLI</h3><p>Paseo supervises provider CLIs already installed and authenticated on this machine; it does not replace their subscriptions.</p><a href="#providers">Choose your providers <ArrowRight/></a></div></li>
-        <li><span>3</span><div><h3>Choose a connection</h3><p>Use Relay for the hosted web app. Use Tailscale when Agent God Mode and this host share a tailnet. You may enable both.</p><div className="setup-choice-links"><a href="#relay"><Cloud/>Relay</a><a href="#tailscale"><Network/>Tailscale</a></div></div></li>
+        <li><span>3</span><div><h3>Choose a connection</h3><p>Use Relay when Agent God Mode is hosted outside your network. Use Tailscale when the Agent God Mode server and Paseo host share a tailnet. You may enable both.</p><div className="setup-choice-links"><a href="#relay"><Cloud/>Relay</a><a href="#tailscale"><Network/>Tailscale</a></div></div></li>
       </ol>
     </section>
 
@@ -60,13 +60,13 @@ export default function SetupPage() {
     </section>
 
     <section className="setup-section" id="relay">
-      <div className="setup-heading"><span>04 · Recommended for web</span><h2>Connect through Paseo Relay.</h2><p>Relay needs only outbound internet access—no public IP, inbound security-group rule, port forwarding, or Tailscale installation. Paseo encrypts host traffic end to end.</p></div>
+      <div className="setup-heading"><span>04 · Hosted connection</span><h2>Connect through Paseo Relay.</h2><p>Use Relay when Agent God Mode is hosted outside your private network. It needs only outbound internet access—no public IP, inbound security-group rule, port forwarding, or Tailscale installation—and Paseo encrypts host traffic end to end.</p></div>
       <ol className="setup-compact-steps"><li><span>1</span><div><h3>Create a pairing offer</h3><Code>{"paseo daemon pair --relay"}</Code></div></li><li><span>2</span><div><h3>Copy the complete link</h3><p>Keep the <code>#offer=…</code> fragment intact. The hostname before it can be a Paseo or Tailscale URL; the encrypted offer contains the relay endpoint used by Agent God Mode.</p></div></li><li><span>3</span><div><h3>Pair Agent God Mode</h3><p>Open <strong>App → Settings → Paseo hosts → Add host → Paseo Relay</strong>, paste the link, then connect and verify.</p></div></li></ol>
       <External href="https://paseo.sh/docs/connectivity#paseo-relay">Paseo Relay details</External>
     </section>
 
     <section className="setup-section setup-raised" id="tailscale">
-      <div className="setup-heading"><span>05 · Private direct connection</span><h2>Connect over Tailscale.</h2><p>Use this option when Agent God Mode and your Paseo host are connected to the same tailnet. You can keep Relay enabled as a second connection method.</p></div>
+      <div className="setup-heading"><span>05 · Private direct connection</span><h2>Connect over Tailscale.</h2><p>Use this option when the server running Agent God Mode and your Paseo host are connected to the same tailnet. Traffic stays on your private network, and you can keep Relay enabled as a fallback.</p></div>
       <ol className="setup-compact-steps"><li><span>1</span><div><h3>Install and join Tailscale</h3><Code>{"curl -fsSL https://tailscale.com/install.sh | sh\nsudo tailscale up"}</Code></div></li><li><span>2</span><div><h3>Bind Paseo to the tailnet address</h3><Code>{'tailscale ip -4\n# Add the returned IP to ~/.paseo/config.json:\n{\n  "$schema": "https://paseo.sh/schemas/paseo.config.v1.json",\n  "version": 1,\n  "daemon": { "listen": "100.x.y.z:6767" }\n}\npaseo daemon restart'}</Code></div></li><li><span>3</span><div><h3>Add the direct endpoint</h3><p>In Agent God Mode choose <strong>Tailscale direct</strong> and enter <code>wss://your-host.your-tailnet.ts.net/ws</code>. Use the secure <code>.ts.net</code> address for the web app.</p></div></li></ol>
       <div className="setup-reference-row"><External href="https://tailscale.com/docs/install/linux">Install Tailscale on Linux</External><External href="https://paseo.sh/docs/connectivity#tailscale">Paseo’s Tailscale configuration</External></div>
     </section>

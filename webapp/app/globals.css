@@ -280,6 +280,19 @@ label { display: grid; gap: 5px; font-size: 11px; font-weight: 600; color: var(-
 .delete-trigger { min-height: 28px; width: 28px; color: var(--text-3); border-color: transparent; background: transparent; opacity: .45; }
 tr:hover .delete-trigger, .delete-trigger:focus-visible { opacity: 1; color: var(--red); }
 .delete-dialog { width: min(500px,100%); }
+.plan-reader-backdrop { position: fixed; inset: 0; z-index: 150; background: var(--bg); }
+.plan-reader { width: 100%; height: 100dvh; min-height: 0; display: grid; grid-template-rows: auto minmax(0,1fr); background: var(--bg); color: var(--text); }
+.plan-reader-header { min-height: 72px; padding: 12px 22px; display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 94%, transparent); backdrop-filter: blur(18px); }
+.plan-reader-header > div:first-child { min-width: 0; }
+.plan-reader-header h2 { max-width: min(760px,60vw); margin: 2px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 18px; }
+.plan-reader-header small { display: block; margin-top: 2px; color: var(--text-3); }
+.plan-reader-header > div:last-child { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.plan-reader-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.plan-reader-content { width: min(900px,calc(100% - 48px)); margin: 0 auto; padding: 52px 0 110px; }
+.plan-reader-content .prose { font-size: 15px; line-height: 1.78; }
+.plan-reader-content .prose h1 { font-size: 30px; }
+.plan-reader-content .prose h2 { font-size: 23px; margin-top: 2em; }
+.plan-reader-content .prose h3 { font-size: 18px; }
 .delete-warning { display: flex; gap: 11px; padding: 12px; border: 1px solid color-mix(in srgb, var(--red) 35%, var(--line)); background: color-mix(in srgb, var(--red) 7%, var(--surface)); border-radius: 8px; }
 .delete-warning > svg { color: var(--red); margin-top: 2px; }
 .delete-warning p { color: var(--text-2); margin: 3px 0 0; }
@@ -663,6 +676,13 @@ tr:hover .delete-trigger, .delete-trigger:focus-visible { opacity: 1; color: var
   .login-page { padding: 82px 16px 24px; }
   .login-back { left: 18px; }
   .login-panel { padding: 28px 22px; }
+  .plan-reader-header { min-height: 64px; padding: 10px 12px; gap: 10px; }
+  .plan-reader-header h2 { max-width: calc(100vw - 125px); font-size: 15px; }
+  .plan-reader-header > div:last-child > .status-chip, .plan-reader-header > div:last-child > a { display: none; }
+  .plan-reader-header > div:last-child .button { min-width: 36px; padding: 0 9px; font-size: 0; }
+  .plan-reader-header > div:last-child .button svg { width: 16px; height: 16px; }
+  .plan-reader-content { width: calc(100% - 32px); padding: 32px 0 80px; }
+  .plan-reader-content .prose { font-size: 14px; }
   .stats { grid-template-columns: 1fr; }
   .stats > div { border-right: 0; border-bottom: 1px solid var(--line); }
   .filter-bar, .plan-toolbar { grid-template-columns: 1fr; }
