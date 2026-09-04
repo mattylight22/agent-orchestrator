@@ -33,21 +33,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <header className="mobile-bar"><button className="icon-button" onClick={() => setMobile(true)} aria-label="Open navigation"><Menu /></button><span><img src={appIcon.src} alt="" />Agent God Mode</span><i className={refreshing ? "sync spinning" : "sync"} /></header>
     <aside className={mobile ? "sidebar open" : "sidebar"}>
       <div className="brand"><img src={appIcon.src} alt="" /><strong>Agent God Mode</strong><button className="mobile-close" onClick={() => setMobile(false)} aria-label="Close navigation"><X /></button></div>
-      <button className="primary new-button" onClick={() => setNewOpen(true)}><CirclePlus />New workstream <kbd>⌘N</kbd></button>
+      <button className="primary new-button" onClick={() => setNewOpen(true)}><CirclePlus />New Workstream <kbd>⌘N</kbd></button>
       <nav className="main-nav">
         <Nav href="/app" active={pathname === "/app"} icon={<LayoutDashboard />}>Dashboard</Nav>
         <Nav href="/app/plans" active={pathname.startsWith("/app/plans")} icon={<FileText />}>Plans</Nav>
         <Nav href="/app?focus=search" active={false} icon={<Search />}>Search <kbd>⌘K</kbd></Nav>
       </nav>
-      <div className="side-heading"><span>Recent repositories</span><Search size={13} /></div>
+      <div className="side-heading"><span>Recent Repositories</span><Search size={13} /></div>
       <input className="repo-search" value={repoQuery} onChange={(event) => setRepoQuery(event.target.value)} placeholder="Filter repositories" aria-label="Filter repositories" />
       <div className="repo-list">{recent.map((repo) => <Link key={repo.id} href={`/app?repository=${encodeURIComponent(repo.id)}`} onClick={() => setMobile(false)}><span className="repo-avatar">{repo.name[0]?.toUpperCase()}</span><span>{repo.name}</span><small>{snapshot.workstreams.filter((item) => item.repositoryId === repo.id).length}</small></Link>)}{!recent.length && <p>No repositories match.</p>}</div>
-      <Link className="browse-link" href="/app?allRepositories=1">Browse all {snapshot.repositories.length}</Link>
-      <div className="side-heading"><span>Paseo hosts</span><small>{snapshot.hosts.length}</small></div>
+      <Link className="browse-link" href="/app?allRepositories=1">Browse All {snapshot.repositories.length}</Link>
+      <div className="side-heading"><span>Agent Instances</span><small>{snapshot.hosts.length}</small></div>
       <div className="host-list">{snapshot.hosts.map((host) => <Link href="/app/settings#paseo" key={host.id}><i className="online"/><Bot /> <span>{host.name}</span></Link>)}</div>
-      <div className="sidebar-bottom"><Nav href="/app/settings" active={pathname.startsWith("/app/settings")} icon={<Settings />}>Settings</Nav><button><ChevronsLeft />Collapse sidebar</button></div>
+      <div className="sidebar-bottom"><Nav href="/app/settings" active={pathname.startsWith("/app/settings")} icon={<Settings />}>Settings</Nav><button><ChevronsLeft />Collapse Sidebar</button></div>
     </aside>
-    <main className="main-area"><div className="topbar"><span>{pathname.startsWith("/app/plans") ? "Plans" : pathname.startsWith("/app/settings") ? "Settings" : pathname.startsWith("/app/workstreams/") ? "Workstream" : "All workstreams"}</span><span className="host-health"><i className="online" />{snapshot.hosts.length}/{snapshot.hosts.length} paired</span></div>{children}</main>
+    <main className="main-area"><div className="topbar"><span>{pathname.startsWith("/app/plans") ? "Plans" : pathname.startsWith("/app/settings") ? "Settings" : pathname.startsWith("/app/workstreams/") ? "Workstream" : "All Workstreams"}</span><span className="host-health"><i className="online" />{snapshot.hosts.length}/{snapshot.hosts.length} paired</span></div>{children}</main>
     <NewWorkstreamDialog open={newOpen} onClose={() => setNewOpen(false)} />
   </div>;
 }

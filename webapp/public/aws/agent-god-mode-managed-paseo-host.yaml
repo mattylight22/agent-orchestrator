@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Paseo host managed through an Agent God Mode AWS account connection.
+Description: Agent Instance running Paseo, managed through an Agent God Mode AWS account connection.
 
 Parameters:
   VpcId:
@@ -37,7 +37,7 @@ Resources:
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Outbound-only access for an Agent God Mode Paseo host
+      GroupDescription: Outbound-only access for an Agent God Mode Agent Instance
       VpcId: !Ref VpcId
       SecurityGroupEgress:
         - IpProtocol: "-1"
@@ -127,4 +127,3 @@ Outputs:
     Value: !Sub https://${AWS::Region}.console.aws.amazon.com/systems-manager/session-manager/${PaseoHost}?region=${AWS::Region}
   BootstrapLog:
     Value: /var/log/agent-god-mode-bootstrap.log
-

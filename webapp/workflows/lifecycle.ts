@@ -107,7 +107,7 @@ async function launchAgent(userId: string, workstreamId: string, role: AgentRole
   const agentId = await withPaseoClient(userId, workstream.host_id, async (client) => {
     const snapshot = await waitForProviderSnapshot(client);
     const available = providerCatalog(snapshot).find((item) => item.provider === config.provider && item.model === config.model && item.status === "ready");
-    if (!available) throw new Error(`${config.provider}/${config.model} is not available on the selected Paseo host`);
+    if (!available) throw new Error(`${config.provider}/${config.model} is not available on the selected Agent Instance`);
     const workspace = client.workspaces.ref(workstream.workspace_id);
     const agent = await workspace.agents.create({
       config: {

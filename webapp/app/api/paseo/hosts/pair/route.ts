@@ -6,7 +6,7 @@ import { requireUser } from "@/lib/supabase/server";
 export async function POST(request: Request) {
   try {
     const { name, pairingLink } = await readJson<{ name: string; pairingLink: string }>(request);
-    if (!name?.trim()) throw new Error("Give this Paseo host a display name");
+    if (!name?.trim()) throw new Error("Give this Agent Instance a display name");
     const { user } = await requireUser();
     const offer = parsePairingLink(pairingLink);
     const catalog = await validatePairingOffer(offer);

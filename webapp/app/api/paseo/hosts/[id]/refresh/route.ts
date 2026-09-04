@@ -12,9 +12,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const { supabase, user } = await requireUser();
     const body = await request.json().catch(() => ({})) as RefreshInput;
     const { data: host, error: hostError } = await supabase.from("paseo_hosts").select("endpoint,daemon_id").eq("id", id).eq("user_id", user.id).single();
-    if (hostError || !host) throw hostError ?? new Error("Paseo host not found");
+    if (hostError || !host) throw hostError ?? new Error("Agent Instance not found");
     const direct = body.browserValidation;
-    if (direct && (direct.endpoint !== normalizeTailscaleEndpoint(host.endpoint) || direct.daemonId !== host.daemon_id)) throw new Error("The Tailscale endpoint returned a different Paseo host");
+    if (direct && (direct.endpoint !== normalizeTailscaleEndpoint(host.endpoint) || direct.daemonId !== host.daemon_id)) throw new Error("The Tailscale endpoint returned a different Agent Instance");
     const catalog = direct?.catalog ?? await withPaseoClient(user.id, id, async (client) => providerCatalog(await waitForProviderSnapshot(client)));
     const { error } = await supabase.from("paseo_hosts").update({ provider_catalog: catalog, daemon_version: direct?.daemonVersion ?? undefined, source_updated_at: new Date().toISOString() }).eq("id", id).eq("user_id", user.id);
     if (error) throw error;

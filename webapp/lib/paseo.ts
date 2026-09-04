@@ -118,7 +118,7 @@ async function loadConnections(userId: string, hostId: string): Promise<Array<{ 
     admin.from("paseo_hosts").select("preferred_transport").eq("user_id", userId).eq("id", hostId).single(),
     admin.from("paseo_connections").select("transport,encrypted_credentials").eq("user_id", userId).eq("host_id", hostId),
   ]);
-  if (hostError || connectionError || !host) throw hostError ?? connectionError ?? new Error("Paseo host not found");
+  if (hostError || connectionError || !host) throw hostError ?? connectionError ?? new Error("Agent Instance not found");
   const preferred = (host.preferred_transport ?? "relay") as PaseoTransport;
   return (rows ?? []).map((row) => {
     const transport = row.transport as PaseoTransport;
@@ -129,7 +129,7 @@ async function loadConnections(userId: string, hostId: string): Promise<Array<{ 
 
 export async function withPaseoClient<T>(userId: string, hostId: string, action: (client: PaseoClient) => Promise<T>): Promise<T> {
   const candidates = await loadConnections(userId, hostId);
-  if (!candidates.length) throw new Error("This Paseo host has no web connection configured");
+  if (!candidates.length) throw new Error("This Agent Instance has no web connection configured");
   let lastError: unknown;
   for (const candidate of candidates) {
     const client = createPaseoClient({ ...candidate.config, clientId: `agent-lens-workflow-${randomUUID()}`, appVersion: "0.1.0", reconnect: { enabled: false }, connectTimeoutMs: 20_000 });
@@ -138,12 +138,12 @@ export async function withPaseoClient<T>(userId: string, hostId: string, action:
     try { return await action(client); }
     finally { await client.close().catch(() => undefined); }
   }
-  throw new Error(`Could not connect to this Paseo host using its configured transports. ${lastError instanceof Error ? lastError.message : ""}`.trim());
+  throw new Error(`Could not connect to this Agent Instance using its configured transports. ${lastError instanceof Error ? lastError.message : ""}`.trim());
 }
 
 export async function withPaseoDaemon<T>(userId: string, hostId: string, action: (client: DaemonClient) => Promise<T>): Promise<T> {
   const candidates = await loadConnections(userId, hostId);
-  if (!candidates.length) throw new Error("This Paseo host has no web connection configured");
+  if (!candidates.length) throw new Error("This Agent Instance has no web connection configured");
   let lastError: unknown;
   for (const candidate of candidates) {
     const client = new DaemonClient({ ...candidate.config, clientId: `agent-lens-daemon-${randomUUID()}`, clientType: "browser", appVersion: "0.1.0", reconnect: { enabled: false }, connectTimeoutMs: 20_000 });
@@ -152,7 +152,7 @@ export async function withPaseoDaemon<T>(userId: string, hostId: string, action:
     try { return await action(client); }
     finally { await client.close().catch(() => undefined); }
   }
-  throw new Error(`Could not connect to this Paseo host using its configured transports. ${lastError instanceof Error ? lastError.message : ""}`.trim());
+  throw new Error(`Could not connect to this Agent Instance using its configured transports. ${lastError instanceof Error ? lastError.message : ""}`.trim());
 }
 
 export function normalizeGithubRemote(remote: string | null | undefined): string | null {

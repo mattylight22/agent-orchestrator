@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Agent God Mode host with Paseo, Tailscale, Claude Code, Codex, Cursor Agent, and Session Manager.
+Description: Agent God Mode Agent Instance with Paseo, Tailscale, Claude Code, Codex, Cursor Agent, and Session Manager.
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -68,7 +68,7 @@ Resources:
   SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Outbound-only access for the Agent God Mode Paseo host
+      GroupDescription: Outbound-only access for the Agent God Mode Agent Instance
       VpcId: !Ref VpcId
       SecurityGroupEgress:
         - IpProtocol: "-1"

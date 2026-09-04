@@ -12,7 +12,7 @@ import { decryptCredential } from "./crypto";
 import { createSupabaseAdminClient } from "./supabase/admin";
 
 const DEFAULT_ACCESS_TEMPLATE_URL = "https://agent-god-mode-cloudformation-931677066893-us-east-2.s3.us-east-2.amazonaws.com/templates/agent-god-mode-aws-access.yaml?versionId=ckzd9ednjD0KPRiljAFmTJrgpQw555e1";
-const DEFAULT_MANAGED_HOST_TEMPLATE_URL = "https://agent-god-mode-cloudformation-931677066893-us-east-2.s3.us-east-2.amazonaws.com/templates/agent-god-mode-managed-paseo-host.yaml?versionId=fdbNdBXsBFo1Yg4AKFf0mkb3cmFXPn0.";
+const DEFAULT_MANAGED_HOST_TEMPLATE_URL = "https://agent-god-mode-cloudformation-931677066893-us-east-2.s3.us-east-2.amazonaws.com/templates/agent-god-mode-managed-paseo-host.yaml?versionId=NBQYoQDATILtpmtUe0h4tnlnqHWh6hCb";
 
 interface ExternalIdEnvelope { externalId: string }
 interface AwsConnectionRow { id: string; user_id: string; name: string; account_id: string | null; role_arn: string | null; state: string }

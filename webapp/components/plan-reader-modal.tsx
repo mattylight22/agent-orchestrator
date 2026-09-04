@@ -48,13 +48,13 @@ export function PlanReaderModal({ title, repository, status, body, mode = "read"
     <section className="plan-reader" role="dialog" aria-modal="true" aria-labelledby={titleId}>
       <header className="plan-reader-header">
         <div>
-          <span className="eyebrow">{mode === "annotate" ? "Review and annotate" : "Plan reading view"}</span>
+          <span className="eyebrow">{mode === "annotate" ? "Review and Annotate" : "Plan Reading View"}</span>
           <h2 id={titleId}>{title}</h2>
           {repository && <small>{repository}</small>}
         </div>
         <div>
           <StatusChip value={status}/>
-          {workstreamHref && mode === "read" && <Link className="button" href={workstreamHref} onClick={onClose}>Open workstream <ArrowRight/></Link>}
+          {workstreamHref && mode === "read" && <Link className="button" href={workstreamHref} onClick={onClose}>Open Workstream <ArrowRight/></Link>}
           {onMinimize && <button className="button" onClick={onMinimize} aria-label="Minimize plan"><Minimize2/>Minimize</button>}
           <button ref={closeButton} className="button" onClick={onClose} aria-label="Close full-screen plan"><X/>Close</button>
         </div>
@@ -88,7 +88,7 @@ export function PlanAnnotator({ body, planId, comments, request }: { body: strin
   return <div className="annotator">
     <div className="plan-prose" ref={prose} onMouseUp={capture}><Markdown>{body}</Markdown></div>
     <aside className="comments-panel">
-      <header><strong>Revision comments</strong><small>{comments.length}</small></header>
+      <header><strong>Revision Comments</strong><small>{comments.length}</small></header>
       {selection && <form onSubmit={(event) => {
         event.preventDefault();
         if (!comment.trim()) return;
@@ -96,10 +96,10 @@ export function PlanAnnotator({ body, planId, comments, request }: { body: strin
         window.getSelection()?.removeAllRanges();
         setSelection(null);
         setComment("");
-      }}><blockquote>{selection.quote}</blockquote><textarea autoFocus value={comment} onChange={(event) => setComment(event.target.value)} placeholder="What should change?"/><div><button type="button" className="button" onClick={() => setSelection(null)}>Cancel</button><button className="primary">Add comment</button></div></form>}
+      }}><blockquote>{selection.quote}</blockquote><textarea autoFocus value={comment} onChange={(event) => setComment(event.target.value)} placeholder="What should change?"/><div><button type="button" className="button" onClick={() => setSelection(null)}>Cancel</button><button className="primary">Add Comment</button></div></form>}
       {!selection && !comments.length && <p className="hint">Highlight a sentence or section in the plan to request a revision.</p>}
       {comments.map((item) => <article key={item.id}><blockquote>{item.quote}</blockquote><p>{item.comment}</p><button aria-label="Delete comment" onClick={() => void request(`/api/plans/${planId}/actions`, { method: "POST", body: JSON.stringify({ action: "delete-comment", commentId: item.id }) })}><Trash2/></button></article>)}
-      {comments.length > 0 && <button className="primary submit-revisions" onClick={() => void request(`/api/plans/${planId}/actions`, { method: "POST", body: JSON.stringify({ action: "submit-comments" }) })}><Send/>Submit {comments.length} revision{comments.length === 1 ? "" : "s"} to planner</button>}
+      {comments.length > 0 && <button className="primary submit-revisions" onClick={() => void request(`/api/plans/${planId}/actions`, { method: "POST", body: JSON.stringify({ action: "submit-comments" }) })}><Send/>Submit {comments.length} Revision{comments.length === 1 ? "" : "s"} to Planner</button>}
     </aside>
   </div>;
 }

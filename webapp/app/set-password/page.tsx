@@ -44,8 +44,8 @@ export default function SetPasswordPage() {
       <section className="login-panel">
         <form onSubmit={submit}>
           <img src={appIcon.src} alt="" className="login-icon" />
-          <span className="eyebrow">Invitation accepted</span>
-          <h1>Create your password</h1>
+          <span className="eyebrow">Invitation Accepted</span>
+          <h1>Create Your Password</h1>
           <p>Choose the password you’ll use to sign in to Agent God Mode.</p>
           {error && <div className="banner error" role="alert">{error}</div>}
           <label>
@@ -53,12 +53,12 @@ export default function SetPasswordPage() {
             <input type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} required autoFocus />
           </label>
           <label>
-            Confirm password
+            Confirm Password
             <input type="password" autoComplete="new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} minLength={8} required />
           </label>
-          <div className="password-requirement"><Check />At least 8 characters</div>
+          <div className="password-requirement"><Check />At Least 8 Characters</div>
           <button className="primary login-submit" disabled={busy}>
-            {busy ? "Creating password…" : "Create password"}<ArrowRight />
+            {busy ? "Creating Password…" : "Create Password"}<ArrowRight />
           </button>
         </form>
       </section>

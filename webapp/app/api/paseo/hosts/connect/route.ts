@@ -15,7 +15,7 @@ interface ConnectInput {
 export async function POST(request: Request) {
   try {
     const input = await readJson<ConnectInput>(request);
-    if (!input.name?.trim()) throw new Error("Give this Paseo host a display name");
+    if (!input.name?.trim()) throw new Error("Give this Agent Instance a display name");
     if (input.transport !== "relay" && input.transport !== "tailscale") throw new Error("Choose Relay or Tailscale");
     const { user } = await requireUser();
     let hostId: string;

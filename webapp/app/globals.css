@@ -470,10 +470,11 @@ tr:hover .delete-trigger, .delete-trigger:focus-visible { opacity: 1; color: var
 .onboarding-intro { text-align: center; margin-bottom: 34px; }
 .onboarding-intro h1 { max-width: 720px; margin: 9px auto 12px; font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif; font-size: clamp(34px,5vw,49px); line-height: 1.03; letter-spacing: -.035em; }
 .onboarding-intro p { margin: 0; color: var(--text-2); }
-.onboarding-progress { list-style: none; width: min(480px,100%); margin: 0 auto 28px; padding: 0; display: grid; grid-template-columns: repeat(2,1fr); }
+.onboarding-progress { list-style: none; width: min(620px,100%); margin: 0 auto 28px; padding: 0; display: grid; grid-template-columns: repeat(3,1fr); }
 .onboarding-progress li { position: relative; display: flex; align-items: center; gap: 9px; color: var(--text-3); }
-.onboarding-progress li + li { justify-content: flex-end; }
-.onboarding-progress li:first-child::after { content: ""; position: absolute; left: 38px; right: -92px; top: 14px; height: 1px; background: var(--line-strong); }
+.onboarding-progress li + li { justify-content: center; }
+.onboarding-progress li:last-child { justify-content: flex-end; }
+.onboarding-progress li:not(:last-child)::after { content: ""; position: absolute; z-index: 0; left: 38px; width: calc(100% - 18px); top: 14px; height: 1px; background: var(--line-strong); }
 .onboarding-progress li > span { position: relative; z-index: 1; width: 29px; height: 29px; display: grid; place-items: center; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--bg); font-size: 11px; font-weight: 700; }
 .onboarding-progress li > span svg { width: 13px; }
 .onboarding-progress li > div { display: grid; }
@@ -485,6 +486,11 @@ tr:hover .delete-trigger, .delete-trigger:focus-visible { opacity: 1; color: var
 .onboarding-panel { padding: 38px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow); text-align: center; }
 .onboarding-panel-icon { width: 48px; height: 48px; margin: 0 auto 18px; display: grid; place-items: center; border-radius: 12px; background: var(--brand-soft); color: var(--brand); }
 .onboarding-panel-icon svg { width: 22px; height: 22px; }
+.onboarding-paseo-explainer { margin: 25px 0; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); border: 1px solid var(--line); border-radius: 10px; text-align: left; overflow: hidden; }
+.onboarding-paseo-explainer > div { padding: 16px; display: grid; align-content: start; gap: 5px; background: var(--surface-2); }
+.onboarding-paseo-explainer > div + div { border-left: 1px solid var(--line); }
+.onboarding-paseo-explainer span { color: var(--text-2); font-size: 12px; line-height: 1.5; }
+.onboarding-intro-actions { display: flex; align-items: center; justify-content: center; gap: 9px; }
 .onboarding-panel h2 { margin: 7px 0 10px; font-size: 24px; letter-spacing: -.02em; }
 .onboarding-panel > p { max-width: 620px; margin: 0 auto 24px; color: var(--text-2); }
 .onboarding-privacy { margin: 0 auto 24px; padding: 16px; display: flex; gap: 12px; text-align: left; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
@@ -840,8 +846,10 @@ tr:hover .delete-trigger, .delete-trigger:focus-visible { opacity: 1; color: var
   .onboarding-shell { width: min(100% - 24px,850px); padding-top: 34px; }
   .onboarding-intro { text-align: left; }
   .onboarding-intro h1 { font-size: 34px; }
-  .onboarding-progress li:first-child::after { right: -36px; }
   .onboarding-progress li > div { display: none; }
+  .onboarding-paseo-explainer { grid-template-columns: 1fr; }
+  .onboarding-paseo-explainer > div + div { border-left: 0; border-top: 1px solid var(--line); }
+  .onboarding-intro-actions { align-items: stretch; flex-direction: column; }
   .onboarding-panel { padding: 27px 18px; }
   .onboarding-options { grid-template-columns: 1fr; }
   .onboarding-options article { min-height: 210px; }

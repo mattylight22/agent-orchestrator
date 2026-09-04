@@ -12,4 +12,10 @@ describe("onboarding state", () => {
   it("does not count disabled hosts", () => {
     expect(onboardingState({ settings: { githubConnected: true }, hosts: [{ enabled: false, transports: ["tailscale"] }] }).complete).toBe(false);
   });
+
+  it("shows the Paseo introduction before Agent Instance setup", () => {
+    expect(onboardingState({ settings: { githubConnected: true, paseoIntroductionSeen: false }, hosts: [] }).paseoIntroductionSeen).toBe(false);
+    expect(onboardingState({ settings: { githubConnected: true, paseoIntroductionSeen: true }, hosts: [] }).paseoIntroductionSeen).toBe(true);
+    expect(onboardingState({ settings: { githubConnected: true, paseoIntroductionSeen: false }, hosts: [{ enabled: true, transports: ["relay"] }] }).paseoIntroductionSeen).toBe(true);
+  });
 });
