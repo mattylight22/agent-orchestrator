@@ -166,7 +166,7 @@ export async function refreshHostMappings(userId: string, hostId: string) {
   const repositoryByName = new Map((repositories ?? []).map((repo) => [repo.full_name.toLowerCase(), repo]));
   const matches = await withPaseoDaemon(userId, hostId, async (client) => {
     const { projects } = await client.listProjects();
-    const known = new Map<string, { projectId: string; projectRootPath: string; remote: string }>();
+    const known = new Map<string, { projectId: string; projectRootPath: string; remote: string; workspaceKind: string }>();
     for (const project of projects) {
       if (project.projectKind !== "git") continue;
       await client.openProject(project.projectRootPath).catch(() => undefined);
@@ -176,19 +176,58 @@ export async function refreshHostMappings(userId: string, hostId: string) {
       const page = await client.fetchWorkspaces({ page: { limit: 200, ...(cursor ? { cursor } : {}) } });
       for (const workspace of page.entries) {
         const remote = normalizeGithubRemote(workspace.gitRuntime?.remoteUrl ?? workspace.project?.checkout.remoteUrl);
-        if (remote) known.set(workspace.projectId, { projectId: workspace.projectId, projectRootPath: workspace.projectRootPath, remote });
+        if (remote) known.set(workspace.projectId, { projectId: workspace.projectId, projectRootPath: workspace.projectRootPath, remote, workspaceKind: workspace.workspaceKind });
       }
       cursor = page.pageInfo.nextCursor ?? undefined;
     } while (cursor);
     return [...known.values()];
   });
-  const rows = matches.flatMap((match) => {
+  const { data: existingMappings, error: existingMappingsError } = await admin
+    .from("host_repository_mappings")
+    .select("repository_id,project_id")
+    .eq("user_id", userId)
+    .eq("host_id", hostId);
+  if (existingMappingsError) throw existingMappingsError;
+  const existingByRepository = new Map((existingMappings ?? []).map((mapping) => [mapping.repository_id, mapping.project_id]));
+  type ProjectMatch = (typeof matches)[number];
+  const candidatesByRepository = new Map<string, { repository: { id: string; full_name: string }; matches: ProjectMatch[] }>();
+  for (const match of matches) {
     const repository = repositoryByName.get(match.remote);
-    return repository ? [{ id: `${hostId}:${repository.id}`, user_id: userId, host_id: hostId, repository_id: repository.id, project_id: match.projectId, project_root_path: match.projectRootPath, remote_url: match.remote, validated_at: new Date().toISOString() }] : [];
-  });
+    if (!repository) continue;
+    const group: { repository: { id: string; full_name: string }; matches: ProjectMatch[] } = candidatesByRepository.get(repository.id) ?? { repository, matches: [] };
+    group.matches.push(match);
+    candidatesByRepository.set(repository.id, group);
+  }
+
+  const rows: Array<Record<string, unknown>> = [];
+  const ambiguous: string[] = [];
+  for (const { repository, matches: candidates } of candidatesByRepository.values()) {
+    const existingProjectId = existingByRepository.get(repository.id);
+    const checkoutCandidates = candidates.filter((candidate) => candidate.workspaceKind !== "worktree");
+    const selected = candidates.find((candidate) => candidate.projectId === existingProjectId)
+      ?? (checkoutCandidates.length === 1 ? checkoutCandidates[0] : undefined)
+      ?? (candidates.length === 1 ? candidates[0] : undefined);
+    if (!selected) {
+      ambiguous.push(repository.full_name);
+      continue;
+    }
+    rows.push({
+      id: `${hostId}:${repository.id}`,
+      user_id: userId,
+      host_id: hostId,
+      repository_id: repository.id,
+      project_id: selected.projectId,
+      project_root_path: selected.projectRootPath,
+      remote_url: selected.remote,
+      validated_at: new Date().toISOString(),
+    });
+  }
   if (rows.length) {
     const { error: mappingError } = await admin.from("host_repository_mappings").upsert(rows, { onConflict: "user_id,host_id,repository_id" });
     if (mappingError) throw mappingError;
+  }
+  if (ambiguous.length) {
+    throw new Error(`Multiple Paseo projects match ${ambiguous.join(", ")}. Select an existing project mapping before provisioning.`);
   }
   return rows;
 }

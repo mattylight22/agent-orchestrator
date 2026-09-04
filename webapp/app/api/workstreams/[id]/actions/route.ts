@@ -4,7 +4,7 @@ import { workstreamStatuses, type RoleConfig, type WorkstreamStatus } from "@age
 import { Octokit } from "@octokit/rest";
 import { getGithubAccessToken } from "@/lib/github";
 import { jsonError, readJson } from "@/lib/http";
-import { startAgentSynchronization, startAgentWorkflow, startIndependentReview, startPullRequestReconciliation } from "@/lib/orchestration";
+import { startAgentSynchronization, startAgentWorkflow, startIndependentReview, startPullRequestReconciliation, startWorkstreamWorkflow } from "@/lib/orchestration";
 import { withPaseoClient, withPaseoDaemon } from "@/lib/paseo";
 import { requireUser } from "@/lib/supabase/server";
 
@@ -17,7 +17,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const { supabase, user } = await requireUser();
     const { data: workstream, error } = await supabase.from("workstreams").select("*").eq("user_id", user.id).eq("id", id).is("deleted_at", null).single();
     if (error || !workstream) throw error ?? new Error("Workstream not found");
-    if (body.action === "status") {
+    if (body.action === "retry-provision") {
+      if (workstream.workspace_id) throw new Error("This workstream already has a Paseo workspace");
+      const { error: retryError } = await supabase.from("workstreams").update({ phase: "provisioning", agent_state: "queued", source_updated_at: new Date().toISOString() }).eq("id", id).eq("user_id", user.id);
+      if (retryError) throw retryError;
+      await audit(supabase, user.id, id, "workstream.provisioning.retried", "Provisioning retried", workstream.branch_name);
+      await startWorkstreamWorkflow(user.id, id);
+    } else if (body.action === "status") {
       if (!body.status || !workstreamStatuses.includes(body.status)) throw new Error("Invalid workstream status");
       if (workstream.status === "merged" && body.status !== "merged") throw new Error("Merged workstreams are terminal");
       await supabase.from("workstreams").update({ status: body.status, source_updated_at: new Date().toISOString() }).eq("id", id);

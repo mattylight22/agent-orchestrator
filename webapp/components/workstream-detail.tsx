@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowUpRight, Bot, Check, Circle, CircleHelp, GitBranch, MessageSquare, Play, Send, ShieldCheck, Trash2 } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Bot, Check, Circle, CircleHelp, GitBranch, MessageSquare, Play, RotateCcw, Send, ShieldCheck, Trash2 } from "lucide-react";
 import type { AgentQuestion, PlanStatus } from "@agent-lens/domain";
 import { useAgentLens } from "./snapshot-provider";
 import { Markdown } from "./markdown";
@@ -23,7 +23,8 @@ export function WorkstreamDetail({ id }: { id: string }) {
   if (!workstream) return <section className="page"><div className="empty-state standalone"><h2>Workstream not found</h2><Link className="button" href="/">Back to dashboard</Link></div></section>;
   const action = async (name: string, payload: Record<string, unknown> = {}) => { setBusy(name); try { await request(`/api/workstreams/${id}/actions`, { method: "POST", body: JSON.stringify({ action: name, ...payload }) }); } finally { setBusy(""); } };
   const stageIndex = Math.max(0, stages.findIndex(([, phases]) => (phases as readonly string[]).includes(workstream.phase)));
-  const primary = workstream.phase === "ready" ? <button className="primary" onClick={() => void action("build")} disabled={Boolean(busy)}><Play/>Start build</button>
+  const primary = workstream.phase === "attention" && !workstream.workspaceId ? <button className="primary" onClick={() => void action("retry-provision")} disabled={Boolean(busy)}><RotateCcw/>Retry provisioning</button>
+    : workstream.phase === "ready" ? <button className="primary" onClick={() => void action("build")} disabled={Boolean(busy)}><Play/>Start build</button>
     : workstream.phase === "building" && workstream.agentState !== "running" ? <button className="primary" onClick={() => void action("review-fix")} disabled={Boolean(busy)}><ShieldCheck/>Review & fix</button>
     : workstream.phase === "review-fix" && workstream.agentState !== "running" ? <button className="primary" onClick={() => void action("complete-review")} disabled={Boolean(busy)}><GitBranch/>Create pull request</button>
     : workstream.phase === "pr-open" ? <button className="primary" onClick={() => void action("independent-review")} disabled={Boolean(busy)}><ShieldCheck/>Start independent review</button>
