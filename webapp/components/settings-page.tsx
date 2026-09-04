@@ -24,6 +24,7 @@ export function SettingsPage() {
 function PaseoHosts({ hosts, providerCatalogs, request }: { hosts: PaseoHost[]; providerCatalogs: Record<string, Array<unknown>>; request<T = unknown>(url: string, init?: RequestInit): Promise<T> }) {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [busy, setBusy] = useState("");
+  const [warnings, setWarnings] = useState<Record<string, string>>({});
   async function prefer(hostId: string, transport: PaseoTransport) {
     setBusy(`${hostId}:${transport}`);
     try { await request(`/api/paseo/hosts/${hostId}/transport`, { method: "PATCH", body: JSON.stringify({ transport }) }); }
@@ -34,7 +35,8 @@ function PaseoHosts({ hosts, providerCatalogs, request }: { hosts: PaseoHost[]; 
       <div className="connection-icon"><Server/></div>
       <div><strong>{host.name}</strong><small><code>{host.daemonId}</code> · {providerCatalogs[host.id]?.length ?? 0} models</small><div className="transport-list">{(host.transports ?? []).map((transport) => <button type="button" key={transport} disabled={busy !== "" || host.preferredTransport === transport} className={`transport-chip ${host.preferredTransport === transport ? "preferred" : ""}`} onClick={() => void prefer(host.id, transport)}>{transport === "relay" ? <RadioTower/> : <Wifi/>}{transport === "relay" ? "Relay" : "Tailscale"}{host.preferredTransport === transport && <span>Primary</span>}</button>)}</div></div>
       <span className="connected"><Check/>Configured</span>
-      <button className="button" onClick={() => { setBusy(host.id); void request(`/api/paseo/hosts/${host.id}/refresh`, { method: "POST" }).finally(() => setBusy("")); }} disabled={busy !== ""}><RefreshCw className={busy === host.id ? "spinning" : ""}/>Refresh</button>
+      <button className="button" onClick={() => { setBusy(host.id); void request<{ mappingWarning?: string | null }>(`/api/paseo/hosts/${host.id}/refresh`, { method: "POST" }).then((value) => setWarnings((current) => ({ ...current, [host.id]: value.mappingWarning ?? "" }))).catch(() => undefined).finally(() => setBusy("")); }} disabled={busy !== ""}><RefreshCw className={busy === host.id ? "spinning" : ""}/>Refresh</button>
+      {warnings[host.id] && <div className="banner warning">Providers refreshed. Repository discovery needs attention: {warnings[host.id]}</div>}
     </div>)}</div>
     {!hosts.length && <div className="empty-connection"><Server/><div><strong>No Paseo hosts connected</strong><small>Add a connection to discover providers, projects, and workspaces.</small></div></div>}
     <div className="add-host-row"><div><Plus/><span><strong>Connect another Paseo host</strong><small>Use the guided setup to choose Relay or a direct Tailscale connection. Matching daemon IDs are combined automatically.</small></span></div><button className="primary" onClick={() => setWizardOpen(true)}><Plus/>Add host</button></div>
