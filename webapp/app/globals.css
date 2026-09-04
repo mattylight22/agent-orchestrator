@@ -472,14 +472,12 @@ tr:hover .delete-trigger, .delete-trigger:focus-visible { opacity: 1; color: var
 .onboarding-intro { text-align: center; margin-bottom: 34px; }
 .onboarding-intro h1 { max-width: 720px; margin: 9px auto 12px; font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif; font-size: clamp(34px,5vw,49px); line-height: 1.03; letter-spacing: -.035em; }
 .onboarding-intro p { margin: 0; color: var(--text-2); }
-.onboarding-progress { list-style: none; width: min(620px,100%); margin: 0 auto 28px; padding: 0; display: grid; grid-template-columns: repeat(3,1fr); }
-.onboarding-progress li { position: relative; display: flex; align-items: center; gap: 9px; color: var(--text-3); }
-.onboarding-progress li + li { justify-content: center; }
-.onboarding-progress li:last-child { justify-content: flex-end; }
-.onboarding-progress li:not(:last-child)::after { content: ""; position: absolute; z-index: 0; left: 38px; width: calc(100% - 18px); top: 14px; height: 1px; background: var(--line-strong); }
+.onboarding-progress { position: relative; list-style: none; width: min(620px,100%); margin: 0 auto 28px; padding: 0; display: grid; grid-template-columns: repeat(3,1fr); }
+.onboarding-progress::before { content: ""; position: absolute; z-index: 0; top: 14px; left: calc(100% / 6); right: calc(100% / 6); height: 1px; background: var(--line-strong); }
+.onboarding-progress li { position: relative; display: grid; justify-items: center; align-content: start; gap: 6px; color: var(--text-3); text-align: center; }
 .onboarding-progress li > span { position: relative; z-index: 1; width: 29px; height: 29px; display: grid; place-items: center; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--bg); font-size: 11px; font-weight: 700; }
 .onboarding-progress li > span svg { width: 13px; }
-.onboarding-progress li > div { display: grid; }
+.onboarding-progress li > div { display: grid; min-height: 31px; }
 .onboarding-progress small { font-size: 10px; }
 .onboarding-progress .current { color: var(--text); }
 .onboarding-progress .current > span { color: var(--brand); border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
