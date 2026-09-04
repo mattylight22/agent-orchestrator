@@ -86,10 +86,11 @@ export async function verifyAwsConnectionRole(userId: string, connectionId: stri
 export function awsAccessSetup(connectionId: string, externalId: string) {
   const brokerRoleArn = requiredBrokerRoleArn();
   const token = awsConnectionToken(connectionId);
+  const stackName = `agent-god-mode-access-${token}`;
   const templateUrl = process.env.AWS_ACCESS_TEMPLATE_URL?.trim() || DEFAULT_ACCESS_TEMPLATE_URL;
   const params = new URLSearchParams({
     templateURL: templateUrl,
-    stackName: `agent-god-mode-access-${token}`,
+    stackName,
     param_BrokerRoleArn: brokerRoleArn,
     param_ConnectionId: token,
     param_ExternalId: externalId,
@@ -98,8 +99,10 @@ export function awsAccessSetup(connectionId: string, externalId: string) {
   const executionRoleArn = `arn:aws:iam::*:role/AgentGodModeExecution-${token}`;
   return {
     token,
+    stackName,
     roleName,
     launchUrl: `https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/quickcreate?${params.toString()}`,
+    outputsUrl: `https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/outputs?stackId=${encodeURIComponent(stackName)}`,
     trustPolicy: JSON.stringify({ Version: "2012-10-17", Statement: [{ Effect: "Allow", Principal: { AWS: brokerRoleArn }, Action: "sts:AssumeRole", Condition: { StringEquals: { "sts:ExternalId": externalId } } }] }, null, 2),
     permissionsPolicy: JSON.stringify({ Version: "2012-10-17", Statement: [
       { Sid: "DiscoverInfrastructure", Effect: "Allow", Action: ["ec2:DescribeRegions", "ec2:DescribeRouteTables", "ec2:DescribeSubnets", "ec2:DescribeVpcs", "cloudformation:ListStacks", "ssm:DescribeInstanceInformation", "ssm:ListCommandInvocations", "ssm:GetCommandInvocation"], Resource: "*" },

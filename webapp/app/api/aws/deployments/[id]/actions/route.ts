@@ -12,7 +12,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (error || !deployment) throw error ?? new Error("AWS deployment not found");
     if (body.action === "retry") {
       if (deployment.state !== "failed") throw new Error("Only failed deployments can be retried");
-      const { data: claimed, error: claimError } = await supabase.from("aws_paseo_deployments").update({ state: "queued", failure_detail: null }).eq("user_id", user.id).eq("id", id).eq("state", "failed").select("id").maybeSingle();
+      const { data: claimed, error: claimError } = await supabase.from("aws_paseo_deployments").update({ state: "queued", failure_detail: null, pair_command_id: null }).eq("user_id", user.id).eq("id", id).eq("state", "failed").select("id").maybeSingle();
       if (claimError) throw claimError;
       if (!claimed) throw new Error("This deployment is already being retried");
       await startAwsProvisioning(user.id, id);

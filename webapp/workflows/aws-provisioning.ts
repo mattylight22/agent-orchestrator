@@ -98,8 +98,13 @@ async function startPairCommand(userId: string, deploymentId: string) {
   const result = await ssm.send(new SendCommandCommand({
     DocumentName: "AWS-RunShellScript",
     InstanceIds: [deployment.instance_id],
-    Parameters: { commands: ["sudo -iu ubuntu bash -lc 'paseo daemon pair --relay'"] },
-    TimeoutSeconds: 60,
+    Parameters: { commands: [
+      "set -eu",
+      "cloud-init status --wait",
+      "command -v paseo >/dev/null 2>&1 || { echo 'Paseo CLI is unavailable after bootstrap. Review /var/log/agent-god-mode-bootstrap.log.' >&2; tail -n 80 /var/log/agent-god-mode-bootstrap.log >&2; exit 127; }",
+      "sudo -iu ubuntu env PATH=/home/ubuntu/.local/bin:/home/ubuntu/.cursor/bin:/usr/local/bin:/usr/bin:/bin paseo daemon pair --relay",
+    ] },
+    TimeoutSeconds: 900,
     Comment: `Agent God Mode Relay pairing ${String(deployment.id).slice(0, 8)}`,
   }));
   if (!result.Command?.CommandId) throw new Error("AWS did not start the Paseo pairing command");
@@ -113,7 +118,15 @@ async function pairCommandState(userId: string, deploymentId: string) {
   const deployment = await loadDeployment(userId, deploymentId);
   const { ssm } = await awsClients(userId, deployment.aws_account_id, deployment.region, "pair-status");
   const result = await ssm.send(new GetCommandInvocationCommand({ CommandId: deployment.pair_command_id, InstanceId: deployment.instance_id }));
-  if (["Failed", "Cancelled", "TimedOut", "Cancelling"].includes(result.Status ?? "")) throw new Error(`Paseo pairing command ended with ${result.Status}`);
+  if (["Failed", "Cancelled", "TimedOut", "Cancelling"].includes(result.Status ?? "")) {
+    const output = `${result.StandardErrorContent ?? ""}\n${result.StandardOutputContent ?? ""}`
+      .replace(/\x1b\[[0-9;]*m/g, "")
+      .replace(/#offer=[^\s'\"]+/g, "#offer=[redacted]")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 700);
+    throw new Error(output ? `Paseo pairing failed on the Agent Instance: ${output}` : `Paseo pairing command ended with ${result.Status}`);
+  }
   return result.Status === "Success";
 }
 
