@@ -37,13 +37,15 @@ Resources:
             }]
           }
       Policies:
-        - PolicyName: AssumeAgentGodModeCustomerRoles
+        - PolicyName: AssumeAgentGodModeConnectionRoles
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
                 Action: sts:AssumeRole
-                Resource: arn:aws:iam::*:role/AgentGodModeCustomer-*
+                Resource:
+                  - arn:aws:iam::*:role/AgentGodModeConnection-*
+                  - arn:aws:iam::*:role/AgentGodModeCustomer-*
                 Condition:
                   'Null':
                     sts:ExternalId: "false"

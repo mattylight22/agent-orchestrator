@@ -11,7 +11,7 @@ import { classifySubnetRoute } from "./aws-deployment";
 import { decryptCredential } from "./crypto";
 import { createSupabaseAdminClient } from "./supabase/admin";
 
-const DEFAULT_ACCESS_TEMPLATE_URL = "https://agent-god-mode-cloudformation-931677066893-us-east-2.s3.us-east-2.amazonaws.com/templates/agent-god-mode-aws-access.yaml?versionId=sKvrEtKTuBGSqFx22Tr.tTXd5SS4uTC9";
+const DEFAULT_ACCESS_TEMPLATE_URL = "https://agent-god-mode-cloudformation-931677066893-us-east-2.s3.us-east-2.amazonaws.com/templates/agent-god-mode-aws-access.yaml?versionId=ckzd9ednjD0KPRiljAFmTJrgpQw555e1";
 const DEFAULT_MANAGED_HOST_TEMPLATE_URL = "https://agent-god-mode-cloudformation-931677066893-us-east-2.s3.us-east-2.amazonaws.com/templates/agent-god-mode-managed-paseo-host.yaml?versionId=fdbNdBXsBFo1Yg4AKFf0mkb3cmFXPn0.";
 
 interface ExternalIdEnvelope { externalId: string }
@@ -65,11 +65,11 @@ export async function assumeCustomerCredentials(userId: string, connectionId: st
   return { credentials: { accessKeyId: value.AccessKeyId, secretAccessKey: value.SecretAccessKey, sessionToken: value.SessionToken, expiration: value.Expiration }, account };
 }
 
-export async function verifyAwsCustomerRole(userId: string, connectionId: string, rawRoleArn: string) {
+export async function verifyAwsConnectionRole(userId: string, connectionId: string, rawRoleArn: string) {
   const roleArn = awsRoleArnSchema.parse(rawRoleArn);
   const { account, externalId } = await loadAwsConnection(userId, connectionId);
   const expectedToken = awsConnectionToken(connectionId);
-  if (!roleArn.endsWith(`/AgentGodModeCustomer-${expectedToken}`)) throw new Error("This role belongs to a different AWS connection");
+  if (!roleArn.endsWith(`/AgentGodModeConnection-${expectedToken}`) && !roleArn.endsWith(`/AgentGodModeCustomer-${expectedToken}`)) throw new Error("This role belongs to a different AWS connection");
   const sts = new STSClient({ region: brokerRegion(), credentials: brokerCredentials(connectionId, "verify") });
   const assumed = await sts.send(new AssumeRoleCommand({ RoleArn: roleArn, ExternalId: externalId, RoleSessionName: sessionName(connectionId, "verify"), DurationSeconds: 900 }));
   const value = assumed.Credentials;
@@ -94,7 +94,7 @@ export function awsAccessSetup(connectionId: string, externalId: string) {
     param_ConnectionId: token,
     param_ExternalId: externalId,
   });
-  const roleName = `AgentGodModeCustomer-${token}`;
+  const roleName = `AgentGodModeConnection-${token}`;
   const executionRoleArn = `arn:aws:iam::*:role/AgentGodModeExecution-${token}`;
   return {
     token,

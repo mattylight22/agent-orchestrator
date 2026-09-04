@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { verifyAwsCustomerRole } from "@/lib/aws";
+import { verifyAwsConnectionRole } from "@/lib/aws";
 import { jsonError, readJson } from "@/lib/http";
 import { requireUser } from "@/lib/supabase/server";
 
@@ -7,8 +7,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   try {
     const { id } = await context.params;
     const { roleArn } = await readJson<{ roleArn?: string }>(request);
-    if (!roleArn) throw new Error("Paste the CustomerRoleArn from the AWS stack outputs");
+    if (!roleArn) throw new Error("Paste the ConnectionRoleArn from the AWS stack outputs");
     const { user } = await requireUser();
-    return NextResponse.json(await verifyAwsCustomerRole(user.id, id, roleArn));
+    return NextResponse.json(await verifyAwsConnectionRole(user.id, id, roleArn));
   } catch (error) { return jsonError(error); }
 }

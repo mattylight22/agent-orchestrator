@@ -1,6 +1,6 @@
 # AWS OIDC operator setup
 
-Agent God Mode uses short-lived AWS sessions. The web app exchanges its Vercel OIDC identity for the app broker role, then assumes a connection-specific customer role using that connection's unique external ID. No AWS access key is configured in Vercel or collected from a customer.
+Agent God Mode uses short-lived AWS sessions. The web app exchanges its Vercel OIDC identity for the app broker role, then assumes the restricted IAM role created for a specific AWS account connection. No AWS access key is configured in Vercel or collected from a user.
 
 ## 1. Use the team-scoped Vercel OIDC issuer
 
@@ -48,6 +48,6 @@ Apply `supabase/migrations/20260904000000_aws_oidc_provisioning.sql` to the Agen
 
 ## What customers do
 
-Customers open **Settings → AWS accounts**, create a connection, and either launch the prefilled access-role stack or reveal the exact trust and permissions JSON in copy/paste boxes. The full access stack also creates the restricted CloudFormation execution role and EC2 Session Manager instance role required for managed host deployment.
+Users open **Settings → AWS accounts**, create a connection, and either run the guided AWS setup or reveal the exact trust and permissions JSON in copy/paste boxes. The full access stack also creates the restricted CloudFormation execution role and EC2 Session Manager instance role required for managed host deployment.
 
-Deleting a managed host deletes its CloudFormation stack and encrypted EBS volume. Disconnecting an AWS account removes the app's encrypted external ID, but the customer must also delete the `agent-god-mode-access-*` stack in their AWS account for complete IAM revocation.
+Deleting a managed host deletes its CloudFormation stack and encrypted EBS volume. Disconnecting an AWS account removes the app's encrypted external ID, but the user must also delete the `agent-god-mode-access-*` stack in AWS to remove its IAM roles completely.

@@ -5,12 +5,12 @@ import { describe, expect, it } from "vitest";
 const read = (name: string) => readFileSync(fileURLToPath(new URL(`../public/aws/${name}`, import.meta.url)), "utf8");
 
 describe("AWS provisioning templates", () => {
-  it("restricts the broker to production OIDC and named customer roles", () => {
+  it("restricts the broker to production OIDC and named connection roles", () => {
     const template = read("agent-god-mode-operator-broker.yaml");
     expect(template).toContain("oidc.vercel.com/${VercelTeamSlug}:aud");
     expect(template).toContain('"sts.amazonaws.com"');
     expect(template).toContain("environment:production");
-    expect(template).toContain("role/AgentGodModeCustomer-*");
+    expect(template).toContain("role/AgentGodModeConnection-*");
     expect(template).toContain("sts:ExternalId");
   });
 

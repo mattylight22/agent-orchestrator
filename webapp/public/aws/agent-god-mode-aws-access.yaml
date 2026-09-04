@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Credentialless Agent God Mode access roles for one AWS account connection.
+Description: Restricted Agent God Mode IAM roles for one AWS account connection.
 
 Parameters:
   BrokerRoleArn:
@@ -88,10 +88,10 @@ Resources:
       Tags:
         - { Key: AgentGodModeConnection, Value: !Ref ConnectionId }
 
-  CustomerRole:
+  ConnectionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub AgentGodModeCustomer-${ConnectionId}
+      RoleName: !Sub AgentGodModeConnection-${ConnectionId}
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -102,7 +102,7 @@ Resources:
               StringEquals:
                 sts:ExternalId: !Ref ExternalId
       Policies:
-        - PolicyName: AgentGodModeCustomerControl
+        - PolicyName: AgentGodModeConnectionControl
           PolicyDocument:
             Version: "2012-10-17"
             Statement:
@@ -156,9 +156,9 @@ Resources:
         - { Key: AgentGodModeConnection, Value: !Ref ConnectionId }
 
 Outputs:
-  CustomerRoleArn:
+  ConnectionRoleArn:
     Description: Paste this value into Agent God Mode to verify the account.
-    Value: !GetAtt CustomerRole.Arn
+    Value: !GetAtt ConnectionRole.Arn
   ExecutionRoleArn:
     Value: !GetAtt ExecutionRole.Arn
   InstanceProfileName:

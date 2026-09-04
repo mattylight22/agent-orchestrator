@@ -331,7 +331,7 @@ export const createWorkstreamInputSchema = z.object({
   baseBranch: z.string().trim().min(1).max(120),
 });
 export const supabaseCredentialsSchema = z.object({ email: z.string().trim().email(), password: z.string().min(8) });
-export const awsRoleArnSchema = z.string().trim().regex(/^arn:aws:iam::\d{12}:role\/AgentGodModeCustomer-[a-f0-9]{12}$/, "Paste the CustomerRoleArn created for this connection");
+export const awsRoleArnSchema = z.string().trim().regex(/^arn:aws:iam::\d{12}:role\/AgentGodMode(?:Connection|Customer)-[a-f0-9]{12}$/, "Paste the ConnectionRoleArn created for this AWS account");
 export const awsAccountIdSchema = z.string().regex(/^\d{12}$/, "AWS account IDs contain exactly 12 digits");
 export const createAwsDeploymentInputSchema = z.object({
   awsAccountId: z.string().uuid(),

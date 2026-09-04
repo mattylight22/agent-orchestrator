@@ -8,7 +8,8 @@ describe("AWS provisioning validation", () => {
     expect(awsDeploymentStackName("703ad78d-fbd8-4490-9d64-42917f39259b")).toBe("agent-god-mode-paseo-703ad78dfbd844909d644291");
   });
 
-  it("accepts only the customer role naming convention", () => {
+  it("accepts only the AWS connection role naming convention", () => {
+    expect(awsRoleArnSchema.safeParse("arn:aws:iam::123456789012:role/AgentGodModeConnection-703ad78dfbd8").success).toBe(true);
     expect(awsRoleArnSchema.safeParse("arn:aws:iam::123456789012:role/AgentGodModeCustomer-703ad78dfbd8").success).toBe(true);
     expect(awsRoleArnSchema.safeParse("arn:aws:iam::123456789012:role/Admin").success).toBe(false);
   });

@@ -18,6 +18,6 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
     if (secretError) throw secretError;
     const { error } = await supabase.from("aws_accounts").update({ deleted_at: new Date().toISOString() }).eq("user_id", user.id).eq("id", id);
     if (error) throw error;
-    return NextResponse.json({ ok: true, reminder: "Delete the Agent God Mode access stack in AWS to revoke the customer role completely." });
+    return NextResponse.json({ ok: true, reminder: "Delete the Agent God Mode access stack in AWS to revoke its IAM roles completely." });
   } catch (error) { return jsonError(error); }
 }
