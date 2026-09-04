@@ -11,11 +11,15 @@ export async function POST(request: Request, context: { params: Promise<{ action
       if (error) throw error;
       return NextResponse.json({ ok: true });
     }
+    if (action === "sign-up") {
+      return NextResponse.json({ error: "Account creation is currently disabled" }, { status: 403 });
+    }
+    if (action !== "sign-in") {
+      return NextResponse.json({ error: "Unknown authentication action" }, { status: 404 });
+    }
     const body = await readJson<{ email: string; password: string }>(request);
-    const result = action === "sign-up"
-      ? await supabase.auth.signUp({ email: body.email.trim(), password: body.password })
-      : await supabase.auth.signInWithPassword({ email: body.email.trim(), password: body.password });
+    const result = await supabase.auth.signInWithPassword({ email: body.email.trim(), password: body.password });
     if (result.error) throw result.error;
-    return NextResponse.json({ ok: true, confirmationRequired: action === "sign-up" && !result.data.session });
+    return NextResponse.json({ ok: true });
   } catch (error) { return jsonError(error); }
 }

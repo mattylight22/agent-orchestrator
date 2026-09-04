@@ -3,6 +3,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSupabasePublicConfig } from "./lib/supabase/config";
 
 export async function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  if (pathname.startsWith("/.well-known/workflow/")) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
   const { url, publishableKey } = getSupabasePublicConfig();
   const supabase = createServerClient(url, publishableKey, {
@@ -16,9 +21,24 @@ export async function proxy(request: NextRequest) {
     },
   });
   const { data } = await supabase.auth.getUser();
-  const publicPath = request.nextUrl.pathname === "/login" || request.nextUrl.pathname.startsWith("/auth/") || request.nextUrl.pathname.startsWith("/api/auth/");
-  if (!data.user && !publicPath) return NextResponse.redirect(new URL("/login", request.url));
-  if (data.user && request.nextUrl.pathname === "/login") return NextResponse.redirect(new URL("/", request.url));
+  const publicPath = pathname === "/login"
+    || pathname === "/api/auth/sign-in"
+    || pathname.startsWith("/auth/github/callback");
+
+  if (!data.user && !publicPath) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "AUTH_REQUIRED" }, { status: 401 });
+    }
+    const login = new URL("/login", request.url);
+    login.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
+    return NextResponse.redirect(login);
+  }
+
+  if (data.user && pathname === "/login") {
+    const requested = request.nextUrl.searchParams.get("next");
+    const destination = requested?.startsWith("/") && !requested.startsWith("//") ? requested : "/";
+    return NextResponse.redirect(new URL(destination, request.url));
+  }
   return response;
 }
 
