@@ -35,11 +35,31 @@ export function providerCatalog(snapshot: any): ProviderModel[] {
   })));
 }
 
+export async function waitForProviderSnapshot(client: PaseoClient, options: { cwd?: string; timeoutMs?: number } = {}) {
+  const { timeoutMs = 60_000, cwd } = options;
+  try {
+    return await client.providers.waitForReady({ ...(cwd ? { cwd } : {}), timeoutMs });
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== "Update the host to wait for provider discovery.") throw error;
+  }
+
+  const deadline = Date.now() + timeoutMs;
+  let snapshot = await client.providers.snapshot(cwd ? { cwd } : undefined);
+  while (snapshot.entries.some((entry) => entry.status === "loading") && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+    snapshot = await client.providers.snapshot(cwd ? { cwd } : undefined);
+  }
+  if (snapshot.entries.some((entry) => entry.status === "loading")) {
+    throw new Error("Timed out waiting for provider discovery");
+  }
+  return snapshot;
+}
+
 export async function validatePairingOffer(offer: ConnectionOffer): Promise<ProviderModel[]> {
   const client = createPaseoClient({ ...connection(offer), clientId: `agent-lens-pair-${randomUUID()}`, appVersion: "0.1.0", reconnect: { enabled: false }, connectTimeoutMs: 15_000 });
   try {
     await client.connect();
-    const snapshot = await client.providers.waitForReady({ timeoutMs: 60_000 });
+    const snapshot = await waitForProviderSnapshot(client);
     return providerCatalog(snapshot);
   } finally { await client.close().catch(() => undefined); }
 }
@@ -50,7 +70,7 @@ export async function validateTailscaleConnection(rawEndpoint: string) {
   let catalog: ProviderModel[];
   try {
     await client.connect();
-    catalog = providerCatalog(await client.providers.waitForReady({ timeoutMs: 60_000 }));
+    catalog = providerCatalog(await waitForProviderSnapshot(client));
   } catch (error) {
     throw new Error(`Agent God Mode could not reach Paseo through Tailscale from this deployment. Confirm the endpoint, TLS certificate, daemon listener, and that the server runtime is connected to your tailnet. ${error instanceof Error ? error.message : ""}`.trim());
   } finally { await client.close().catch(() => undefined); }

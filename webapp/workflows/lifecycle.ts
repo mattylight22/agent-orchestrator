@@ -4,7 +4,7 @@ import { Octokit } from "@octokit/rest";
 import { defaultAppSettings, replaceReviewLog, resolveRoleConfig, type AgentRole, type ReviewFinding, type RoleConfig } from "@agent-lens/domain";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getGithubAccessToken } from "@/lib/github";
-import { ensureHostRepositoryMapping, providerCatalog, withPaseoClient } from "@/lib/paseo";
+import { ensureHostRepositoryMapping, providerCatalog, waitForProviderSnapshot, withPaseoClient } from "@/lib/paseo";
 
 type Row = Record<string, any>;
 
@@ -104,7 +104,7 @@ async function launchAgent(userId: string, workstreamId: string, role: AgentRole
   if (existing.data?.paseo_agent_id && role === "planner") return existing.data.paseo_agent_id;
   const config = override ?? resolveRoleConfig(settings, workstream.host_id, role);
   const agentId = await withPaseoClient(userId, workstream.host_id, async (client) => {
-    const snapshot = await client.providers.waitForReady({ cwd: undefined, timeoutMs: 60_000 });
+    const snapshot = await waitForProviderSnapshot(client);
     const available = providerCatalog(snapshot).find((item) => item.provider === config.provider && item.model === config.model && item.status === "ready");
     if (!available) throw new Error(`${config.provider}/${config.model} is not available on the selected Paseo host`);
     const workspace = client.workspaces.ref(workstream.workspace_id);
