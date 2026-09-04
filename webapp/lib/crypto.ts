@@ -4,7 +4,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 interface Envelope { v: 1; iv: string; tag: string; data: string }
 
 function key(): Buffer {
-  const raw = process.env.AGENT_LENS_ENCRYPTION_KEY;
+  const raw = process.env.CREDENTIAL_ENCRYPTION_KEY;
   if (!raw) throw new Error("Secure connections are temporarily unavailable");
   const value = Buffer.from(raw, "base64");
   if (value.length !== 32) throw new Error("Secure connections are temporarily unavailable");

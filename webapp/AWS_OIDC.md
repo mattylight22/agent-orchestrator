@@ -36,8 +36,8 @@ AWS_PROFILE=personal aws cloudformation describe-stacks \
 Set these server-only environment variables in the production Vercel project:
 
 ```text
-AGENT_LENS_AWS_BROKER_ROLE_ARN=arn:aws:iam::123456789012:role/AgentGodModeBroker
-AGENT_LENS_AWS_BROKER_REGION=us-east-1
+AWS_BROKER_ROLE_ARN=arn:aws:iam::123456789012:role/AgentGodModeBroker
+AWS_BROKER_REGION=us-east-1
 ```
 
 Preview and local AWS access stays disabled unless their OIDC subjects are explicitly added to the broker trust policy.

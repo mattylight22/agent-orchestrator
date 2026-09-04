@@ -19,17 +19,17 @@ interface AwsConnectionRow { id: string; user_id: string; name: string; account_
 interface TemporaryCredentials { accessKeyId: string; secretAccessKey: string; sessionToken: string; expiration?: Date }
 
 function requiredBrokerRoleArn() {
-  const value = process.env.AGENT_LENS_AWS_BROKER_ROLE_ARN?.trim();
+  const value = process.env.AWS_BROKER_ROLE_ARN?.trim();
   if (!value || !/^arn:aws:iam::\d{12}:role\/.+$/.test(value)) throw new Error("Managed AWS deployment is not configured yet");
   return value;
 }
 
 function brokerRegion() {
-  return process.env.AGENT_LENS_AWS_BROKER_REGION?.trim() || "us-east-1";
+  return process.env.AWS_BROKER_REGION?.trim() || "us-east-1";
 }
 
 export function managedHostTemplateUrl() {
-  return process.env.AGENT_LENS_AWS_HOST_TEMPLATE_URL?.trim() || DEFAULT_MANAGED_HOST_TEMPLATE_URL;
+  return process.env.AWS_HOST_TEMPLATE_URL?.trim() || DEFAULT_MANAGED_HOST_TEMPLATE_URL;
 }
 
 export async function loadAwsConnection(userId: string, connectionId: string) {
@@ -86,7 +86,7 @@ export async function verifyAwsCustomerRole(userId: string, connectionId: string
 export function awsAccessSetup(connectionId: string, externalId: string) {
   const brokerRoleArn = requiredBrokerRoleArn();
   const token = awsConnectionToken(connectionId);
-  const templateUrl = process.env.AGENT_LENS_AWS_ACCESS_TEMPLATE_URL?.trim() || DEFAULT_ACCESS_TEMPLATE_URL;
+  const templateUrl = process.env.AWS_ACCESS_TEMPLATE_URL?.trim() || DEFAULT_ACCESS_TEMPLATE_URL;
   const params = new URLSearchParams({
     templateURL: templateUrl,
     stackName: `agent-god-mode-access-${token}`,
