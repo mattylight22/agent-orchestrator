@@ -294,6 +294,10 @@ tr:hover .delete-trigger, .delete-trigger:focus-visible { opacity: 1; color: var
 .toast button { min-height: 24px; width: 24px; padding: 0; border: 0; margin-left: auto; }
 
 .settings-page { max-width: 1120px; }
+.settings-save-state { min-width: 145px; display: inline-flex; justify-content: flex-end; align-items: center; gap: 6px; color: var(--text-3); font-size: 11px; }
+.settings-save-state.saved { color: var(--green); }
+.settings-save-state.error { color: var(--red); }
+.settings-save-state svg { width: 13px; height: 13px; }
 .settings-stack { display: grid; gap: 16px; }
 .settings-section { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); scroll-margin-top: 60px; }
 .settings-section > header { display: flex; gap: 11px; padding: 16px; border-bottom: 1px solid var(--line); }

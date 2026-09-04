@@ -1,21 +1,107 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Bot, Check, Cloud, Github, KeyRound, Link2, LoaderCircle, LockKeyhole, Palette, Plus, RadioTower, RefreshCw, Server, Shield, Unplug, Wifi, X } from "lucide-react";
 import type { AgentRole, AppSettings, PaseoHost, PaseoTransport, RoleConfig } from "@agent-lens/domain";
 import { useRouter } from "next/navigation";
 import { useAgentLens } from "./snapshot-provider";
 
 export function SettingsPage() {
-  const { snapshot, request } = useAgentLens();
+  const { snapshot, request, refresh } = useAgentLens();
   const router = useRouter();
   const [busy, setBusy] = useState("");
-  async function update(patch: Partial<AppSettings>) { await request("/api/settings", { method: "PATCH", body: JSON.stringify(patch) }); }
-  return <section className="page settings-page"><header className="page-header"><div><span className="eyebrow">Preferences</span><h1>Settings</h1><p>Connections, defaults, appearance, and agent roles.</p></div></header>
+  const [settings, setSettings] = useState(snapshot.settings);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveError, setSaveError] = useState("");
+  const settingsRef = useRef(settings);
+  const pendingRef = useRef<Partial<AppSettings>>({});
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savingRef = useRef(false);
+  const dirtyRef = useRef(false);
+  const mountedRef = useRef(true);
+  const flushRef = useRef<() => Promise<void>>(async () => undefined);
+  const catalogs = useMemo(() => Object.values(snapshot.providerCatalogs).flat(), [snapshot.providerCatalogs]);
+
+  function scheduleSave(delay = 450) {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => void flushRef.current(), delay);
+  }
+
+  function update(patch: Partial<AppSettings>) {
+    const next = {
+      ...settingsRef.current,
+      ...patch,
+      ...(patch.globalRoles ? { globalRoles: { ...settingsRef.current.globalRoles, ...patch.globalRoles } } : {}),
+    };
+    settingsRef.current = next;
+    pendingRef.current = {
+      ...pendingRef.current,
+      ...patch,
+      ...(patch.globalRoles ? { globalRoles: next.globalRoles } : {}),
+    };
+    dirtyRef.current = true;
+    setSettings(next);
+    setSaveError("");
+    setSaveState("saving");
+    scheduleSave();
+  }
+
+  flushRef.current = async () => {
+    if (savingRef.current) { scheduleSave(120); return; }
+    const patch = pendingRef.current;
+    if (!Object.keys(patch).length) return;
+    pendingRef.current = {};
+    savingRef.current = true;
+    if (mountedRef.current) setSaveState("saving");
+    let succeeded = false;
+    try {
+      const response = await fetch("/api/settings", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+      const value = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(value.error ?? "Could not save settings");
+      succeeded = true;
+    } catch (error) {
+      if (mountedRef.current) {
+        setSaveError(error instanceof Error ? error.message : "Could not save settings");
+        setSaveState("error");
+      }
+    } finally {
+      savingRef.current = false;
+      if (Object.keys(pendingRef.current).length) scheduleSave(120);
+      else {
+        dirtyRef.current = false;
+        if (succeeded && mountedRef.current) {
+          setSaveState("saved");
+          if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+          statusTimerRef.current = setTimeout(() => setSaveState("idle"), 1_800);
+        } else if (!succeeded) {
+          void refresh().catch(() => undefined);
+        }
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!dirtyRef.current) { settingsRef.current = snapshot.settings; setSettings(snapshot.settings); }
+  }, [snapshot.settings]);
+  useEffect(() => {
+    const theme = settings.theme;
+    document.documentElement.dataset.theme = theme === "system" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : theme;
+    document.documentElement.dataset.density = settings.density;
+  }, [settings.theme, settings.density]);
+  useEffect(() => () => {
+    mountedRef.current = false;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    if (statusTimerRef.current) clearTimeout(statusTimerRef.current);
+    if (Object.keys(pendingRef.current).length) void flushRef.current();
+  }, []);
+
+  return <section className="page settings-page"><header className="page-header"><div><span className="eyebrow">Preferences</span><h1>Settings</h1><p>Connections, defaults, appearance, and agent roles.</p></div><div className={`settings-save-state ${saveState}`} role="status" aria-live="polite">{saveState === "saving" ? "Saving…" : saveState === "saved" ? <><Check/>Saved</> : saveState === "error" ? "Save failed" : "Changes save automatically"}</div></header>
     <div className="settings-stack">
-      <SettingsSection icon={<Palette/>} title="Appearance" description="Tune Agent God Mode for your workspace and display."><div className="settings-grid"><label>Theme<select value={snapshot.settings.theme} onChange={(event) => void update({ theme: event.target.value as AppSettings["theme"] })}><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label><label>Density<select value={snapshot.settings.density} onChange={(event) => void update({ density: event.target.value as AppSettings["density"] })}><option value="compact">Compact</option><option value="balanced">Balanced compact</option><option value="comfortable">Comfortable</option></select></label><label>Branch prefix<input value={snapshot.settings.branchPrefix} onChange={(event) => void update({ branchPrefix: event.target.value })}/></label><label>Rows per page<select value={snapshot.settings.pageSize} onChange={(event) => void update({ pageSize: Number(event.target.value) })}><option>25</option><option>50</option><option>100</option></select></label></div></SettingsSection>
+      {saveError && <div className="banner error" role="alert">{saveError}</div>}
+      <SettingsSection icon={<Palette/>} title="Appearance" description="Tune Agent God Mode for your workspace and display."><div className="settings-grid"><label>Theme<select value={settings.theme} onChange={(event) => update({ theme: event.target.value as AppSettings["theme"] })}><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label><label>Density<select value={settings.density} onChange={(event) => update({ density: event.target.value as AppSettings["density"] })}><option value="compact">Compact</option><option value="balanced">Balanced compact</option><option value="comfortable">Comfortable</option></select></label><label>Branch prefix<input value={settings.branchPrefix} onChange={(event) => update({ branchPrefix: event.target.value })} onBlur={() => void flushRef.current()}/></label><label>Rows per page<select value={settings.pageSize} onChange={(event) => update({ pageSize: Number(event.target.value) })}><option>25</option><option>50</option><option>100</option></select></label></div></SettingsSection>
       <SettingsSection icon={<Github/>} title="GitHub App" description="Access every organization and repository installation available to your GitHub user."><div className="connection-row"><div className="connection-icon"><Github/></div><div><strong>{snapshot.settings.githubConnected ? `Connected as ${snapshot.settings.githubLogin}` : "GitHub is not connected"}</strong><small>{snapshot.settings.githubConnected ? `${snapshot.repositories.length} repositories available across your installations` : "Authorization uses a server-side GitHub App OAuth flow."}</small></div>{snapshot.settings.githubConnected ? <><button className="button" disabled={busy === "repos"} onClick={() => { setBusy("repos"); void request("/api/github/repositories", { method: "POST" }).finally(() => setBusy("")); }}><RefreshCw className={busy === "repos" ? "spinning" : ""}/>Refresh repositories</button><button className="button danger" onClick={() => void request("/api/github/disconnect", { method: "POST" })}><Unplug/>Disconnect</button></> : <a className="primary button" href="/api/github/connect"><Github/>Connect GitHub</a>}</div></SettingsSection>
       <SettingsSection id="paseo" icon={<Server/>} title="Paseo hosts" description="Connect each daemon through Relay, Tailscale, or both."><PaseoHosts hosts={snapshot.hosts} providerCatalogs={snapshot.providerCatalogs} request={request}/></SettingsSection>
-      <SettingsSection icon={<Bot/>} title="Agent defaults" description="Defaults are validated against each host's live provider catalog before launch."><div className="role-grid">{(["planner", "builder", "reviewer"] as AgentRole[]).map((role) => <RoleEditor role={role} key={role} config={snapshot.settings.globalRoles[role]} catalogs={Object.values(snapshot.providerCatalogs).flat()} onChange={(config) => void update({ globalRoles: { ...snapshot.settings.globalRoles, [role]: config } })}/>)}</div></SettingsSection>
+      <SettingsSection icon={<Bot/>} title="Agent defaults" description="Defaults are validated against each host's live provider catalog before launch."><div className="role-grid">{(["planner", "builder", "reviewer"] as AgentRole[]).map((role) => <RoleEditor role={role} key={role} config={settings.globalRoles[role]} catalogs={catalogs} onChange={(config) => update({ globalRoles: { ...settingsRef.current.globalRoles, [role]: config } })}/>)}</div></SettingsSection>
       <SettingsSection icon={<Cloud/>} title="Cloud data" description="Electron and web share normalized account data through Supabase Realtime."><div className="security-note"><Shield/><div><strong>Local-first desktop, durable web</strong><p>Browser rows are protected by Row Level Security. GitHub and Paseo credentials are encrypted server-side and are denied to browser sessions.</p></div></div><div className="connection-row"><div><strong>Signed in as {snapshot.cloud.email}</strong><small>Changes synchronize automatically.</small></div><span className="connected"><Check/>Connected</span><button className="button danger" onClick={() => void request("/api/auth/sign-out", { method: "POST" }).then(() => { router.push("/login"); router.refresh(); })}>Sign out</button></div></SettingsSection>
     </div>
   </section>;
