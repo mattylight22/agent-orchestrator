@@ -397,6 +397,8 @@ tr:hover .delete-trigger, .delete-trigger:focus-visible { opacity: 1; color: var
 .login-panel form > small { text-align: center; color: var(--text-3); }
 .login-submit { margin-top: 6px; height: 42px; }
 .login-submit svg { margin-left: auto; }
+.password-requirement { display: flex; align-items: center; gap: 6px; margin-top: -4px; color: var(--text-3); font-size: 11px; }
+.password-requirement svg { width: 13px; height: 13px; color: var(--green); }
 
 /* Public brand and marketing */
 .marketing-root { min-height: 100vh; background: #f5f0e6; color: #201e19; font-size: 16px; line-height: 1.55; --marketing-line: rgba(35,31,24,.15); --marketing-muted: #6e675b; }
