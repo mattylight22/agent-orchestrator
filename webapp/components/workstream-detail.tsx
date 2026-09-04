@@ -2,11 +2,11 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, ArrowUpRight, Bot, Check, Circle, CircleHelp, GitBranch, Maximize2, MessageSquare, Play, RotateCcw, Send, ShieldCheck, Trash2 } from "lucide-react";
+import { ArrowUpRight, Bot, Check, Circle, CircleHelp, GitBranch, Maximize2, MessageSquare, Play, RotateCcw, Send, ShieldCheck } from "lucide-react";
 import type { AgentQuestion, PlanStatus } from "@agent-lens/domain";
 import { useAgentLens } from "./snapshot-provider";
 import { Markdown } from "./markdown";
-import { PlanReaderModal } from "./plan-reader-modal";
+import { PlanAnnotator, PlanReaderModal } from "./plan-reader-modal";
 import { StatusChip } from "./status-chip";
 
 const stages = [
@@ -36,7 +36,7 @@ export function WorkstreamDetail({ id }: { id: string }) {
     <div className="stage-rail">{stages.map(([label], index) => <div className={index < stageIndex ? "complete" : index === stageIndex ? "active" : ""} key={label}><span>{index < stageIndex ? <Check/> : <Circle/>}</span><strong>{label}</strong><i/></div>)}</div>
     <div className="workstream-body"><div className="workstream-main">
       <div className="tabs"><button className={tab === "timeline" ? "active" : ""} onClick={() => setTab("timeline")}><MessageSquare/>Timeline</button><button className={tab === "plan" ? "active" : ""} onClick={() => setTab("plan")}><GitBranch/>Captured plan{plan && <i/>}</button><button className={tab === "findings" ? "active" : ""} onClick={() => setTab("findings")}><ShieldCheck/>Findings</button></div>
-      {tab === "timeline" && <Timeline workstream={workstream} plan={plan} request={request} />}
+      {tab === "timeline" && <Timeline workstream={workstream} plan={plan} comments={plan ? snapshot.planComments.filter((item) => item.planId === plan.id) : []} request={request} onMinimizeAnnotations={() => setTab("plan")} />}
       {tab === "plan" && (plan ? <PlanDetail plan={plan} allPlans={snapshot.plans} comments={snapshot.planComments.filter((item) => item.planId === plan.id)} request={request} /> : <div className="empty-state"><Bot/><h3>Waiting for the planner</h3><p>The complete plan will appear here and inline in the timeline when Paseo presents it.</p></div>)}
       {tab === "findings" && <Findings workstream={workstream}/>} 
       <form className="composer" onSubmit={followup}><div className="recipient"><i className={workstream.agentState === "running" ? "running" : "online"}/>Following up with <strong>{workstream.agents.at(-1)?.role ?? "agent"}</strong><span>·</span><code>{workstream.agents.at(-1)?.provider}/{workstream.agents.at(-1)?.model}</code></div><div><textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} placeholder="Ask a question, clarify requirements, or give feedback…" rows={2}/><button className="primary icon-button" disabled={!prompt.trim() || Boolean(busy)}><Send/></button></div><small>Enter to send · Shift+Enter for a new line</small></form>
@@ -44,11 +44,11 @@ export function WorkstreamDetail({ id }: { id: string }) {
   </section>;
 }
 
-function Timeline({ workstream, plan, request }: { workstream: any; plan: any; request: any }) {
+function Timeline({ workstream, plan, comments, request, onMinimizeAnnotations }: { workstream: any; plan: any; comments: any[]; request: any; onMinimizeAnnotations(): void }) {
   const scroll = useRef<HTMLDivElement>(null);
   const end = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
-  const [readerOpen, setReaderOpen] = useState(false);
+  const [readerMode, setReaderMode] = useState<"read" | "annotate" | null>(null);
   const latestItemId = workstream.timeline.at(-1)?.id;
   useEffect(() => {
     if (!stickToBottom.current) return;
@@ -65,7 +65,7 @@ function Timeline({ workstream, plan, request }: { workstream: any; plan: any; r
     const question = item.kind === "question" ? parseQuestion(item.content) : null;
     if (question) return <Question key={item.id} value={question} workstreamId={workstream.id} request={request}/>;
     return <article className={`timeline-item ${item.role}`} key={item.id}><header><span className="agent-avatar">{item.role === "user" ? "Y" : "✣"}</span><strong>{item.role === "user" ? "You" : item.agentRole ? `${item.agentRole} agent` : "Agent"}</strong><time title={new Date(item.createdAt).toLocaleString()}>{relative(item.createdAt)}</time></header><Markdown>{item.content}</Markdown></article>;
-  })}{plan && <article className="captured-plan-inline"><header><div><GitBranch/><span><strong>Plan ready for review</strong><small>Revisions replace this plan; they do not create duplicates.</small></span></div><StatusChip value={plan.status}/></header><Markdown>{plan.body}</Markdown><footer><button className="button" onClick={() => setReaderOpen(true)}><Maximize2/>Read fullscreen</button><button className="button" onClick={() => document.querySelector<HTMLButtonElement>(".tabs button:nth-child(2)")?.click()}>Review and annotate</button><button className="primary" disabled={plan.status === "implementation-ready"} onClick={() => void request(`/api/plans/${plan.id}/actions`, { method: "POST", body: JSON.stringify({ action: "status", status: "implementation-ready" }) })}><Check/>{plan.status === "implementation-ready" ? "Implementation ready" : "Mark ready to build"}</button></footer></article>}<div ref={end}/>{readerOpen && plan && <PlanReaderModal title={plan.title} repository={plan.repositoryFullName} status={plan.status} body={plan.body} onClose={() => setReaderOpen(false)}/>}</div>;
+  })}{plan && <article className="captured-plan-inline"><header><div><GitBranch/><span><strong>Plan ready for review</strong><small>Revisions replace this plan; they do not create duplicates.</small></span></div><StatusChip value={plan.status}/></header><Markdown>{plan.body}</Markdown><footer><button className="button" onClick={() => setReaderMode("read")}><Maximize2/>Read fullscreen</button><button className="button" onClick={() => setReaderMode("annotate")}>Review and annotate</button><button className="primary" disabled={plan.status === "implementation-ready"} onClick={() => void request(`/api/plans/${plan.id}/actions`, { method: "POST", body: JSON.stringify({ action: "status", status: "implementation-ready" }) })}><Check/>{plan.status === "implementation-ready" ? "Implementation ready" : "Mark ready to build"}</button></footer></article>}<div ref={end}/>{readerMode && plan && <PlanReaderModal title={plan.title} repository={plan.repositoryFullName} status={plan.status} body={plan.body} mode={readerMode} planId={plan.id} comments={comments} request={request} onMinimize={readerMode === "annotate" ? () => { setReaderMode(null); onMinimizeAnnotations(); } : () => setReaderMode(null)} onClose={() => setReaderMode(null)}/>}</div>;
 }
 
 function parseQuestion(content: string): AgentQuestion | null { try { const value = JSON.parse(content); return value?.agentId && value?.requestId && Array.isArray(value.questions) ? value : null; } catch { return null; } }
@@ -78,20 +78,12 @@ function Question({ value, workstreamId, request }: { value: AgentQuestion; work
 }
 
 function PlanDetail({ plan, allPlans, comments, request }: { plan: any; allPlans: any[]; comments: any[]; request: any }) {
-  const prose = useRef<HTMLDivElement>(null);
-  const [selection, setSelection] = useState<{ quote: string; start: number; end: number } | null>(null);
-  const [comment, setComment] = useState("");
   const [status, setStatus] = useState<PlanStatus>(plan.status);
-  const [readerOpen, setReaderOpen] = useState(false);
-  function capture() {
-    const selection = window.getSelection(); if (!selection || selection.isCollapsed || !prose.current?.contains(selection.anchorNode)) return;
-    const range = selection.getRangeAt(0); const before = document.createRange(); before.selectNodeContents(prose.current); before.setEnd(range.startContainer, range.startOffset);
-    setSelection({ quote: selection.toString(), start: before.toString().length, end: before.toString().length + selection.toString().length });
-  }
+  const [readerMode, setReaderMode] = useState<"read" | "annotate" | null>(null);
   const dependencies = useMemo(() => new Set(plan.dependencyIds), [plan.dependencyIds]);
-  return <div className="plan-detail"><div className="plan-actions"><select value={status} onChange={(event) => { const next = event.target.value as PlanStatus; setStatus(next); void request(`/api/plans/${plan.id}/actions`, { method: "POST", body: JSON.stringify({ action: "status", status: next }) }); }}><option value="product-feature">Product / Feature Plan</option><option value="implementation-ready">Implementation Ready</option><option value="cancelled">Cancelled</option></select><details><summary className="button">Dependencies ({plan.dependencyIds.length})</summary><div className="dependency-menu">{allPlans.filter((item) => item.id !== plan.id).map((item) => <label key={item.id}><input type="checkbox" defaultChecked={dependencies.has(item.id)} onChange={(event) => { event.currentTarget.checked ? dependencies.add(item.id) : dependencies.delete(item.id); void request(`/api/plans/${plan.id}/actions`, { method: "POST", body: JSON.stringify({ action: "dependencies", dependencyIds: [...dependencies] }) }); }}/><span>{item.title}<small>{item.executionState}</small></span></label>)}</div></details><button className="button" onClick={() => setReaderOpen(true)}><Maximize2/>Read fullscreen</button>{status === "implementation-ready" && !plan.blockedByIds.length && <button className="primary" onClick={() => void request(`/api/plans/${plan.id}/actions`, { method: "POST", body: JSON.stringify({ action: "begin" }) })}><Play/>Begin implementation</button>}</div>
-    <div className="annotator"><div className="plan-prose" ref={prose} onMouseUp={capture}><Markdown>{plan.body}</Markdown></div><aside className="comments-panel"><header><strong>Revision comments</strong><small>{comments.length}</small></header>{selection && <form onSubmit={(event) => { event.preventDefault(); if (!comment.trim()) return; void request(`/api/plans/${plan.id}/actions`, { method: "POST", body: JSON.stringify({ action: "add-comment", quote: selection.quote, comment, startOffset: selection.start, endOffset: selection.end }) }); setSelection(null); setComment(""); }}><blockquote>{selection.quote}</blockquote><textarea autoFocus value={comment} onChange={(event) => setComment(event.target.value)} placeholder="What should change?"/><div><button type="button" className="button" onClick={() => setSelection(null)}>Cancel</button><button className="primary">Add comment</button></div></form>}{!selection && !comments.length && <p className="hint">Highlight a sentence or section in the plan to request a revision.</p>}{comments.map((item) => <article key={item.id}><blockquote>{item.quote}</blockquote><p>{item.comment}</p><button aria-label="Delete comment" onClick={() => void request(`/api/plans/${plan.id}/actions`, { method: "POST", body: JSON.stringify({ action: "delete-comment", commentId: item.id }) })}><Trash2/></button></article>)}{comments.length > 0 && <button className="primary submit-revisions" onClick={() => void request(`/api/plans/${plan.id}/actions`, { method: "POST", body: JSON.stringify({ action: "submit-comments" }) })}><Send/>Submit {comments.length} revision{comments.length === 1 ? "" : "s"} to planner</button>}</aside></div>
-    {readerOpen && <PlanReaderModal title={plan.title} repository={plan.repositoryFullName} status={status} body={plan.body} onClose={() => setReaderOpen(false)}/>}
+  return <div className="plan-detail"><div className="plan-actions"><select value={status} onChange={(event) => { const next = event.target.value as PlanStatus; setStatus(next); void request(`/api/plans/${plan.id}/actions`, { method: "POST", body: JSON.stringify({ action: "status", status: next }) }); }}><option value="product-feature">Product / Feature Plan</option><option value="implementation-ready">Implementation Ready</option><option value="cancelled">Cancelled</option></select><details><summary className="button">Dependencies ({plan.dependencyIds.length})</summary><div className="dependency-menu">{allPlans.filter((item) => item.id !== plan.id).map((item) => <label key={item.id}><input type="checkbox" defaultChecked={dependencies.has(item.id)} onChange={(event) => { event.currentTarget.checked ? dependencies.add(item.id) : dependencies.delete(item.id); void request(`/api/plans/${plan.id}/actions`, { method: "POST", body: JSON.stringify({ action: "dependencies", dependencyIds: [...dependencies] }) }); }}/><span>{item.title}<small>{item.executionState}</small></span></label>)}</div></details><button className="button" onClick={() => setReaderMode("read")}><Maximize2/>Read fullscreen</button><button className="button" onClick={() => setReaderMode("annotate")}>Review and annotate</button>{status === "implementation-ready" && !plan.blockedByIds.length && <button className="primary" onClick={() => void request(`/api/plans/${plan.id}/actions`, { method: "POST", body: JSON.stringify({ action: "begin" }) })}><Play/>Begin implementation</button>}</div>
+    <PlanAnnotator body={plan.body} planId={plan.id} comments={comments} request={request}/>
+    {readerMode && <PlanReaderModal title={plan.title} repository={plan.repositoryFullName} status={status} body={plan.body} mode={readerMode} planId={plan.id} comments={comments} request={request} onMinimize={() => setReaderMode(null)} onClose={() => setReaderMode(null)}/>}
   </div>;
 }
 
