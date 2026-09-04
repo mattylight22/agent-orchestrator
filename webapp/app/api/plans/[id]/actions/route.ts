@@ -25,7 +25,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       } else if (body.status === "cancelled") {
         await supabase.from("workstreams").update({ accepted_plan: null, status: "draft", agent_state: "idle", source_updated_at: new Date().toISOString() }).eq("id", plan.workstream_id);
       }
-      await resolvePlanPermission(user.id, workstream, plan, body.status === "implementation-ready" ? "Plan captured and marked implementation-ready in Agent Lens. A separate builder agent will implement it." : body.status === "cancelled" ? "Plan captured and cancelled in Agent Lens. Do not implement it." : null);
+      await resolvePlanPermission(user.id, workstream, plan, body.status === "implementation-ready" ? "Plan captured and marked implementation-ready in Agent God Mode. A separate builder agent will implement it." : body.status === "cancelled" ? "Plan captured and cancelled in Agent God Mode. Do not implement it." : null);
       await audit(supabase, user.id, plan.workstream_id, "plan.status.changed", `Plan marked ${body.status}`, `Previous status: ${plan.status}`);
     } else if (body.action === "dependencies") {
       const dependencyIds = [...new Set(body.dependencyIds ?? [])].filter((dependencyId) => dependencyId !== id);

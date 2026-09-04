@@ -52,7 +52,7 @@ export async function validateTailscaleConnection(rawEndpoint: string) {
     await client.connect();
     catalog = providerCatalog(await client.providers.waitForReady({ timeoutMs: 60_000 }));
   } catch (error) {
-    throw new Error(`Agent Lens could not reach Paseo through Tailscale from this deployment. Confirm the endpoint, TLS certificate, daemon listener, and that the server runtime is connected to your tailnet. ${error instanceof Error ? error.message : ""}`.trim());
+    throw new Error(`Agent God Mode could not reach Paseo through Tailscale from this deployment. Confirm the endpoint, TLS certificate, daemon listener, and that the server runtime is connected to your tailnet. ${error instanceof Error ? error.message : ""}`.trim());
   } finally { await client.close().catch(() => undefined); }
   const daemon = new DaemonClient({ ...directConnection(endpoint), clientId: `agent-lens-tailscale-identity-${randomUUID()}`, clientType: "browser", appVersion: "0.1.0", reconnect: { enabled: false }, connectTimeoutMs: 15_000 });
   try {

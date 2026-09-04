@@ -91,7 +91,7 @@ async function createPaseoWorkspace(userId: string, workstreamId: string) {
 }
 
 function rolePrompt(role: AgentRole, workstream: Row, settings: any): string {
-  if (role === "planner") return `${settings.promptTemplates.planner}\n\n# Workstream context\n\n- Product: Agent Lens\n- Repository: ${workstream.repository_full_name}\n- Base branch: ${workstream.base_branch}\n- Work branch: ${workstream.branch_name}\n\n# Brief\n\n${workstream.brief}`;
+  if (role === "planner") return `${settings.promptTemplates.planner}\n\n# Workstream context\n\n- Product: Agent God Mode\n- Repository: ${workstream.repository_full_name}\n- Base branch: ${workstream.base_branch}\n- Work branch: ${workstream.branch_name}\n\n# Brief\n\n${workstream.brief}`;
   if (role === "builder") return `${settings.promptTemplates.builder}\n\n# Original brief\n\n${workstream.brief}\n\n# Accepted plan\n\n${workstream.accepted_plan}`;
   return `${settings.promptTemplates.independentReview}\n\nPull request: ${workstream.pr_url}\nCompare ${workstream.branch_name} against ${workstream.base_branch}.`;
 }

@@ -5,7 +5,7 @@ import { createSupabaseBrowserClient } from "./supabase/client";
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) } });
   const value = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(value.error ?? "Agent Lens request failed");
+  if (!response.ok) throw new Error(value.error ?? "Agent God Mode request failed");
   return value as T;
 }
 

@@ -23,9 +23,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey);
   }, [router]);
   return <div className="app-shell">
-    <header className="mobile-bar"><button className="icon-button" onClick={() => setMobile(true)} aria-label="Open navigation"><Menu /></button><span><img src={appIcon.src} alt="" />Agent Lens</span><i className={refreshing ? "sync spinning" : "sync"} /></header>
+    <header className="mobile-bar"><button className="icon-button" onClick={() => setMobile(true)} aria-label="Open navigation"><Menu /></button><span><img src={appIcon.src} alt="" />Agent God Mode</span><i className={refreshing ? "sync spinning" : "sync"} /></header>
     <aside className={mobile ? "sidebar open" : "sidebar"}>
-      <div className="brand"><img src={appIcon.src} alt="" /><strong>Agent Lens</strong><button className="mobile-close" onClick={() => setMobile(false)} aria-label="Close navigation"><X /></button></div>
+      <div className="brand"><img src={appIcon.src} alt="" /><strong>Agent God Mode</strong><button className="mobile-close" onClick={() => setMobile(false)} aria-label="Close navigation"><X /></button></div>
       <button className="primary new-button" onClick={() => setNewOpen(true)}><CirclePlus />New workstream <kbd>⌘N</kbd></button>
       <nav className="main-nav">
         <Nav href="/" active={pathname === "/"} icon={<LayoutDashboard />}>Dashboard</Nav>

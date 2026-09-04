@@ -3,7 +3,7 @@ import "./globals.css";
 import appIcon from "../../resources/icon.png";
 
 export const metadata: Metadata = {
-  title: { default: "Agent Lens", template: "%s · Agent Lens" },
+  title: { default: "Agent God Mode", template: "%s · Agent God Mode" },
   description: "Plan, build, and review GitHub workstreams through Paseo.",
   icons: { icon: appIcon.src, apple: appIcon.src },
 };

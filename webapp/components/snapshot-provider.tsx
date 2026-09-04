@@ -24,7 +24,7 @@ export function SnapshotProvider({ initial, children }: { initial: AppSnapshot; 
     try {
       const response = await fetch("/api/snapshot", { cache: "no-store" });
       const value = await response.json();
-      if (!response.ok) throw new Error(value.error ?? "Could not refresh Agent Lens");
+      if (!response.ok) throw new Error(value.error ?? "Could not refresh Agent God Mode");
       setSnapshot(value);
     } finally { setRefreshing(false); }
   }, []);
