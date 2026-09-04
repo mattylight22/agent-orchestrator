@@ -35,7 +35,7 @@ export default function SetupPage() {
       <div className="setup-heading"><span>01 · Why Paseo</span><h2>One connection to every coding agent you already use.</h2><p>Paseo sits on your agent machine and makes its installed provider CLIs available to Agent God Mode. You keep each provider subscription and sign-in; Agent God Mode gives you one place to choose models, coordinate work, and follow progress.</p></div>
       <ol className="setup-steps">
         <li><span>1</span><div><h3>Use your subscriptions</h3><p>Sign in to Claude Code, Codex, Cursor Agent, and other supported CLIs with the accounts your team already pays for.</p></div></li>
-        <li><span>2</span><div><h3>Keep execution private</h3><p>Paseo runs the agents beside your repositories. Source code, working trees, and provider sessions remain on your machine or company infrastructure.</p></div></li>
+        <li><span>2</span><div><h3>Keep execution private</h3><p>Paseo runs the agents beside your repositories. Agent God Mode uses GitHub for repository selection and delivery metadata, but does not ingest, store, index, or analyze repository source. Source code, working trees, and provider sessions remain on your machine or company infrastructure.</p></div></li>
         <li><span>3</span><div><h3>Manage everything together</h3><p>Agent God Mode provides one interface for planning, model selection, follow-ups, implementation, review, and pull requests.</p></div></li>
       </ol>
     </section>

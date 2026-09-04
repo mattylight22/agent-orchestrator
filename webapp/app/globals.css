@@ -322,6 +322,8 @@ tr:hover .delete-trigger, .delete-trigger:focus-visible { opacity: 1; color: var
 .connection-row + .connection-row { border-top: 1px solid var(--line); }
 .connection-row > div:not(.connection-icon) { display: grid; margin-right: auto; }
 .connection-row small { color: var(--text-3); }
+.github-access-note { display: flex; align-items: flex-start; gap: 9px; margin: 12px 0 0; padding: 11px 12px; border-radius: 8px; background: var(--surface-2); color: var(--text-2); font-size: 12px; }
+.github-access-note svg { width: 15px; height: 15px; flex: 0 0 auto; margin-top: 1px; color: var(--green); }
 .connection-icon { width: 35px; height: 35px; display: grid; place-items: center; border-radius: 8px; background: var(--surface-2); }
 .connected { color: var(--green); display: inline-flex; align-items: center; gap: 5px; font-size: 11px; }
 .pair-form { border-top: 1px solid var(--line); margin-top: 13px; padding-top: 13px; display: grid; gap: 12px; }
