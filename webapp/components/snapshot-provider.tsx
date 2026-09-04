@@ -14,20 +14,52 @@ interface SnapshotContextValue {
 
 const SnapshotContext = createContext<SnapshotContextValue | null>(null);
 
+const realtimeTables = [
+  "user_settings",
+  "repositories",
+  "paseo_hosts",
+  "host_repository_mappings",
+  "workstreams",
+  "agent_runs",
+  "timeline_items",
+  "agent_questions",
+  "plans",
+  "plan_dependencies",
+  "plan_comments",
+  "review_iterations",
+  "audit_events",
+  "workflow_runs",
+] as const;
+
 export function SnapshotProvider({ initial, children }: { initial: AppSnapshot; children: React.ReactNode }) {
   const [snapshot, setSnapshot] = useState(initial);
   const [refreshing, setRefreshing] = useState(false);
   const [toast, setToast] = useState<SnapshotContextValue["toast"]>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const refresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
+  const refreshInFlight = useRef<Promise<void> | null>(null);
+  const loadSnapshot = useCallback(async (showIndicator = false) => {
+    if (refreshInFlight.current) return refreshInFlight.current;
+    if (showIndicator) setRefreshing(true);
+    const pending = (async () => {
       const response = await fetch("/api/snapshot", { cache: "no-store" });
       const value = await response.json();
       if (!response.ok) throw new Error(value.error ?? "Could not refresh Agent God Mode");
       setSnapshot(value);
-    } finally { setRefreshing(false); }
+    })();
+    refreshInFlight.current = pending;
+    try {
+      await pending;
+    } finally {
+      if (refreshInFlight.current === pending) refreshInFlight.current = null;
+      if (showIndicator) setRefreshing(false);
+    }
   }, []);
+  const refresh = useCallback(() => loadSnapshot(true), [loadSnapshot]);
+  const refreshInBackground = useCallback(() => { void loadSnapshot().catch(() => undefined); }, [loadSnapshot]);
+  const scheduleBackgroundRefresh = useCallback((delay = 160) => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(refreshInBackground, delay);
+  }, [refreshInBackground]);
   const request = useCallback(async <T,>(url: string, init?: RequestInit): Promise<T> => {
     const response = await fetch(url, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) } });
     const value = await response.json().catch(() => ({}));
@@ -41,12 +73,34 @@ export function SnapshotProvider({ initial, children }: { initial: AppSnapshot; 
   }, [refresh]);
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
-    const channel = supabase.channel("agent-lens-account-data").on("postgres_changes", { event: "*", schema: "public" }, () => {
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => void refresh(), 220);
-    }).subscribe();
+    const channel = supabase.channel("agent-god-mode-account-data");
+    for (const table of realtimeTables) {
+      channel.on("postgres_changes", { event: "*", schema: "public", table }, () => scheduleBackgroundRefresh());
+    }
+    channel.subscribe((status: string) => {
+      if (status === "SUBSCRIBED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") scheduleBackgroundRefresh(0);
+    });
     return () => { if (timer.current) clearTimeout(timer.current); void supabase.removeChannel(channel); };
-  }, [refresh]);
+  }, [scheduleBackgroundRefresh]);
+  const hasActiveWork = useMemo(() => snapshot.workstreams.some((workstream) =>
+    ["queued", "running"].includes(workstream.agentState) ||
+    ["provisioning", "planning", "building", "review-fix", "independent-review"].includes(workstream.phase)
+  ), [snapshot.workstreams]);
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") refreshInBackground();
+    }, hasActiveWork ? 3_000 : 15_000);
+    const refreshWhenVisible = () => { if (document.visibilityState === "visible") refreshInBackground(); };
+    window.addEventListener("focus", refreshWhenVisible);
+    window.addEventListener("online", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshWhenVisible);
+      window.removeEventListener("online", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [hasActiveWork, refreshInBackground]);
   useEffect(() => {
     const theme = snapshot.settings.theme;
     document.documentElement.dataset.theme = theme === "system" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : theme;

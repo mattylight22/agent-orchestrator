@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ArrowUpRight, Bot, Check, Circle, CircleHelp, GitBranch, MessageSquare, Play, RotateCcw, Send, ShieldCheck, Trash2 } from "lucide-react";
 import type { AgentQuestion, PlanStatus } from "@agent-lens/domain";
 import { useAgentLens } from "./snapshot-provider";
@@ -44,8 +44,22 @@ export function WorkstreamDetail({ id }: { id: string }) {
 }
 
 function Timeline({ workstream, plan, request }: { workstream: any; plan: any; request: any }) {
+  const scroll = useRef<HTMLDivElement>(null);
   const end = useRef<HTMLDivElement>(null);
-  return <div className="timeline-scroll">{workstream.timeline.map((item: any) => {
+  const stickToBottom = useRef(true);
+  const latestItemId = workstream.timeline.at(-1)?.id;
+  useEffect(() => {
+    if (!stickToBottom.current) return;
+    const frame = requestAnimationFrame(() => {
+      const element = scroll.current;
+      if (element) element.scrollTo({ top: element.scrollHeight });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [latestItemId, plan?.updatedAt]);
+  return <div className="timeline-scroll" ref={scroll} onScroll={() => {
+    const element = scroll.current;
+    if (element) stickToBottom.current = element.scrollHeight - element.scrollTop - element.clientHeight < 96;
+  }}>{workstream.timeline.map((item: any) => {
     const question = item.kind === "question" ? parseQuestion(item.content) : null;
     if (question) return <Question key={item.id} value={question} workstreamId={workstream.id} request={request}/>;
     return <article className={`timeline-item ${item.role}`} key={item.id}><header><span className="agent-avatar">{item.role === "user" ? "Y" : "✣"}</span><strong>{item.role === "user" ? "You" : item.agentRole ? `${item.agentRole} agent` : "Agent"}</strong><time title={new Date(item.createdAt).toLocaleString()}>{relative(item.createdAt)}</time></header><Markdown>{item.content}</Markdown></article>;

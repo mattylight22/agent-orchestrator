@@ -202,7 +202,7 @@ export async function provisionWorkstreamWorkflow(userId: string, workstreamId: 
     for (;;) {
       const result = await synchronizeAgent(userId, workstreamId, agentId);
       if (result.terminal) break;
-      await sleep("15s");
+      await sleep("5s");
     }
     await setWorkflowState(runId, "complete");
   } catch (error) {
@@ -219,7 +219,7 @@ export async function runAgentWorkflow(userId: string, workstreamId: string, run
     for (;;) {
       const result = await synchronizeAgent(userId, workstreamId, agentId);
       if (result.terminal) break;
-      await sleep("15s");
+      await sleep("5s");
     }
     await setWorkflowState(runId, "complete");
   } catch (error) {
@@ -235,7 +235,7 @@ export async function synchronizeExistingAgentWorkflow(userId: string, workstrea
     for (;;) {
       const result = await synchronizeAgent(userId, workstreamId, agentId);
       if (result.terminal) break;
-      await sleep("15s");
+      await sleep("5s");
     }
     await setWorkflowState(runId, "complete");
   } catch (error) {
@@ -321,7 +321,7 @@ export async function independentReviewWorkflow(userId: string, workstreamId: st
     const reviewerId = await launchAgent(userId, workstreamId, "reviewer", override);
     const builderId = await latestAgent(userId, workstreamId, "builder");
     for (let iteration = 1; iteration <= 3; iteration += 1) {
-      for (;;) { const state = await synchronizeAgent(userId, workstreamId, reviewerId); if (state.terminal) break; await sleep("15s"); }
+      for (;;) { const state = await synchronizeAgent(userId, workstreamId, reviewerId); if (state.terminal) break; await sleep("5s"); }
       const result = await readReviewerResult(userId, workstreamId, reviewerId);
       await recordReviewIteration(userId, workstreamId, iteration, result);
       if (result.verdict === "clean" || !result.findings.length) {
@@ -333,7 +333,7 @@ export async function independentReviewWorkflow(userId: string, workstreamId: st
         await setWorkflowState(runId, "complete"); return;
       }
       await sendAgentMessage(userId, workstreamId, builderId, `Fix every actionable finding below, run relevant tests, commit, and push the branch. Report a concise fix and test summary.\n\n${JSON.stringify(result.findings, null, 2)}`);
-      for (;;) { const state = await synchronizeAgent(userId, workstreamId, builderId); if (state.terminal) break; await sleep("15s"); }
+      for (;;) { const state = await synchronizeAgent(userId, workstreamId, builderId); if (state.terminal) break; await sleep("5s"); }
       await captureFixAndUpdatePr(userId, workstreamId, iteration);
       if (iteration < 3) await sendAgentMessage(userId, workstreamId, reviewerId, "Re-review the updated pull request. Return only the same structured result with remaining or newly introduced actionable findings.");
     }
