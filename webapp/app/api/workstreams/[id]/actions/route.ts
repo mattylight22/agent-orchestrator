@@ -8,7 +8,7 @@ import { startAgentSynchronization, startAgentWorkflow, startIndependentReview, 
 import { withPaseoClient, withPaseoDaemon } from "@/lib/paseo";
 import { requireUser } from "@/lib/supabase/server";
 
-type ActionBody = { action: string; prompt?: string; status?: WorkstreamStatus; roleConfig?: RoleConfig; agentId?: string; requestId?: string; answers?: Record<string, string> | null };
+type ActionBody = { action: string; prompt?: string; status?: WorkstreamStatus; roleConfig?: RoleConfig; agentId?: string; requestId?: string; answers?: Record<string, string> | null; confirmation?: string };
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -17,7 +17,38 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const { supabase, user } = await requireUser();
     const { data: workstream, error } = await supabase.from("workstreams").select("*").eq("user_id", user.id).eq("id", id).is("deleted_at", null).single();
     if (error || !workstream) throw error ?? new Error("Workstream not found");
-    if (body.action === "retry-provision") {
+    if (body.action === "delete") {
+      if (body.confirmation?.trim() !== workstream.name) throw new Error(`Type ${workstream.name} exactly to confirm deletion`);
+      if (workstream.workspace_id) {
+        const archived = await withPaseoClient(user.id, workstream.host_id, (client) => client.workspaces.archive(workstream.workspace_id));
+        if (archived.error && !/not found|already archived/i.test(archived.error)) {
+          throw new Error(`Paseo workspace cleanup failed: ${archived.error}`);
+        }
+      }
+      const now = new Date().toISOString();
+      const { data: plans, error: plansError } = await supabase.from("plans").select("id").eq("user_id", user.id).eq("workstream_id", id);
+      if (plansError) throw plansError;
+      const planIds = (plans ?? []).map((plan) => plan.id);
+      if (planIds.length) {
+        const results = await Promise.all([
+          supabase.from("plan_dependencies").delete().eq("user_id", user.id).in("plan_id", planIds),
+          supabase.from("plan_dependencies").delete().eq("user_id", user.id).in("depends_on_plan_id", planIds),
+          supabase.from("plan_comments").update({ deleted_at: now, source_updated_at: now }).eq("user_id", user.id).in("plan_id", planIds),
+          supabase.from("plans").update({ deleted_at: now, status: "cancelled", execution_state: "cancelled", source_updated_at: now }).eq("user_id", user.id).eq("workstream_id", id),
+        ]);
+        const dependencyError = results.find((result) => result.error)?.error;
+        if (dependencyError) throw dependencyError;
+      }
+      const cleanupResults = await Promise.all([
+        supabase.from("agent_runs").update({ state: "stopped", source_updated_at: now }).eq("user_id", user.id).eq("workstream_id", id),
+        supabase.from("workflow_runs").update({ state: "cancelled", error: "Workstream deleted by user", finished_at: now }).eq("user_id", user.id).eq("workstream_id", id).in("state", ["queued", "running", "waiting"]),
+      ]);
+      const cleanupError = cleanupResults.find((result) => result.error)?.error;
+      if (cleanupError) throw cleanupError;
+      await audit(supabase, user.id, id, "workstream.deleted", "Workstream deleted", workstream.workspace_id ? `Archived Paseo workspace ${workstream.workspace_id}; GitHub branch retained` : "No Paseo workspace existed; GitHub branch retained");
+      const { error: deleteError } = await supabase.from("workstreams").update({ deleted_at: now, agent_state: "stopped", source_updated_at: now }).eq("user_id", user.id).eq("id", id);
+      if (deleteError) throw deleteError;
+    } else if (body.action === "retry-provision") {
       if (workstream.workspace_id) throw new Error("This workstream already has a Paseo workspace");
       const { error: retryError } = await supabase.from("workstreams").update({ phase: "provisioning", agent_state: "queued", source_updated_at: new Date().toISOString() }).eq("id", id).eq("user_id", user.id);
       if (retryError) throw retryError;

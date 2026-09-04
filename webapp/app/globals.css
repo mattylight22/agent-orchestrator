@@ -31,6 +31,8 @@ button:disabled { opacity: .48; cursor: not-allowed; transform: none; }
 .primary { color: white; background: var(--accent); border-color: transparent; font-weight: 600; }
 .primary:hover { background: var(--accent-hover); }
 .danger { color: var(--red); }
+.danger-action { color: white; background: var(--red); border-color: transparent; font-weight: 600; }
+.danger-action:hover { background: color-mix(in srgb, var(--red) 88%, black); }
 .icon-button { width: var(--control); padding: 0; }
 .eyebrow { color: var(--text-3); font-size: 10px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; }
 .spinning { animation: spin 850ms linear infinite; }
@@ -274,6 +276,15 @@ label { display: grid; gap: 5px; font-size: 11px; font-weight: 600; color: var(-
 .dialog label input, .dialog label select { width: 100%; }
 .branch-preview { display: flex; justify-content: space-between; padding: 9px 10px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 7px; color: var(--text-2); }
 .dialog > footer, .pair-form > footer { display: flex; justify-content: flex-end; gap: 8px; }
+.row-actions { width: 42px; padding-right: 8px !important; text-align: right; }
+.delete-trigger { min-height: 28px; width: 28px; color: var(--text-3); border-color: transparent; background: transparent; opacity: .45; }
+tr:hover .delete-trigger, .delete-trigger:focus-visible { opacity: 1; color: var(--red); }
+.delete-dialog { width: min(500px,100%); }
+.delete-warning { display: flex; gap: 11px; padding: 12px; border: 1px solid color-mix(in srgb, var(--red) 35%, var(--line)); background: color-mix(in srgb, var(--red) 7%, var(--surface)); border-radius: 8px; }
+.delete-warning > svg { color: var(--red); margin-top: 2px; }
+.delete-warning p { color: var(--text-2); margin: 3px 0 0; }
+.delete-summary { display: grid; gap: 5px; padding: 10px 12px; border-radius: 8px; background: var(--surface-2); color: var(--text-2); }
+.delete-summary span { display: flex; justify-content: space-between; gap: 16px; }
 .banner { border: 1px solid var(--line); padding: 9px 10px; border-radius: 7px; }
 .banner.warning { color: var(--amber); background: color-mix(in srgb, var(--amber) 7%, var(--surface)); }
 .banner.error { color: var(--red); background: color-mix(in srgb, var(--red) 7%, var(--surface)); border-color: color-mix(in srgb, var(--red) 35%, var(--line)); }
