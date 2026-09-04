@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabasePublicConfig } from "./lib/supabase/config";
+import { isPublicPath, safeProductDestination } from "./lib/routes";
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -21,11 +22,7 @@ export async function proxy(request: NextRequest) {
     },
   });
   const { data } = await supabase.auth.getUser();
-  const publicPath = pathname === "/login"
-    || pathname === "/api/auth/sign-in"
-    || pathname.startsWith("/auth/github/callback");
-
-  if (!data.user && !publicPath) {
+  if (!data.user && !isPublicPath(pathname)) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "AUTH_REQUIRED" }, { status: 401 });
     }
@@ -36,7 +33,7 @@ export async function proxy(request: NextRequest) {
 
   if (data.user && pathname === "/login") {
     const requested = request.nextUrl.searchParams.get("next");
-    const destination = requested?.startsWith("/") && !requested.startsWith("//") ? requested : "/";
+    const destination = safeProductDestination(requested);
     return NextResponse.redirect(new URL(destination, request.url));
   }
   return response;

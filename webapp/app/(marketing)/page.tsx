@@ -1,0 +1,14 @@
+import Link from "next/link";
+import { ArrowRight, GitBranch, Layers3, RadioTower, Workflow } from "lucide-react";
+import { LifecycleDiagram, WorkstreamDiagram } from "@/components/marketing-diagrams";
+import { MarketingCta } from "@/components/marketing-shell";
+
+export default function MarketingHome() {
+  return <main>
+    <section className="marketing-hero"><div className="marketing-hero-copy"><span className="marketing-kicker">Agent orchestration for technical teams</span><h1>Turn plans into reviewed pull requests—across every repository.</h1><p>Agent God Mode gives engineering teams one place to plan, build, review, and follow up with coding agents running on private Paseo infrastructure.</p><div className="marketing-hero-actions"><MarketingCta suffix={<ArrowRight/>}/><Link className="marketing-secondary-button" href="/product">See how it works</Link></div></div><WorkstreamDiagram/></section>
+    <section className="marketing-lifecycle"><div className="marketing-section-heading"><span>One controlled lifecycle</span><h2>Every agent knows its role. You control every gate.</h2><p>Move from a rough brief to a reviewed pull request without losing context between agents, repositories, or sessions.</p></div><LifecycleDiagram/></section>
+    <section className="marketing-values"><article><GitBranch/><span>Isolated by design</span><h3>One branch and workspace per workstream.</h3><p>Parallel agents work without dirtying another branch or competing for the same sandbox.</p></article><article><Layers3/><span>Plans are first-class</span><h3>Capture, revise, annotate, and sequence work.</h3><p>Plan revisions replace the current version, while dependencies keep implementation in the right order.</p></article><article><Workflow/><span>Durable execution</span><h3>Work continues after the browser closes.</h3><p>Agent progress, questions, findings, and pull-request state reconcile into one live timeline.</p></article></section>
+    <section className="marketing-dark-band"><div><span className="marketing-kicker">Private infrastructure, clear oversight</span><h2>Your agents stay close to the code. Your team keeps the control plane.</h2><p>Connect Paseo through its encrypted relay or your existing Tailscale network, then coordinate GitHub work across every installation your account can access.</p><div className="marketing-inline-points"><span><RadioTower/>Paseo Relay or Tailscale</span><span><GitBranch/>GitHub branches and pull requests</span></div></div><Link className="marketing-dark-link" href="/security">Explore the security model<ArrowRight/></Link></section>
+    <section className="marketing-final-cta"><span>Bring order to parallel agent work.</span><h2>One view from idea to reviewed pull request.</h2><MarketingCta suffix={<ArrowRight/>}/></section>
+  </main>;
+}

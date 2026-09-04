@@ -18,7 +18,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "n") { event.preventDefault(); setNewOpen(true); }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); router.push("/?focus=search"); }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); router.push("/app?focus=search"); }
     };
     window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey);
   }, [router]);
@@ -28,19 +28,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="brand"><img src={appIcon.src} alt="" /><strong>Agent God Mode</strong><button className="mobile-close" onClick={() => setMobile(false)} aria-label="Close navigation"><X /></button></div>
       <button className="primary new-button" onClick={() => setNewOpen(true)}><CirclePlus />New workstream <kbd>⌘N</kbd></button>
       <nav className="main-nav">
-        <Nav href="/" active={pathname === "/"} icon={<LayoutDashboard />}>Dashboard</Nav>
-        <Nav href="/plans" active={pathname.startsWith("/plans")} icon={<FileText />}>Plans</Nav>
-        <Nav href="/?focus=search" active={false} icon={<Search />}>Search <kbd>⌘K</kbd></Nav>
+        <Nav href="/app" active={pathname === "/app"} icon={<LayoutDashboard />}>Dashboard</Nav>
+        <Nav href="/app/plans" active={pathname.startsWith("/app/plans")} icon={<FileText />}>Plans</Nav>
+        <Nav href="/app?focus=search" active={false} icon={<Search />}>Search <kbd>⌘K</kbd></Nav>
       </nav>
       <div className="side-heading"><span>Recent repositories</span><Search size={13} /></div>
       <input className="repo-search" value={repoQuery} onChange={(event) => setRepoQuery(event.target.value)} placeholder="Filter repositories" aria-label="Filter repositories" />
-      <div className="repo-list">{recent.map((repo) => <Link key={repo.id} href={`/?repository=${encodeURIComponent(repo.id)}`} onClick={() => setMobile(false)}><span className="repo-avatar">{repo.name[0]?.toUpperCase()}</span><span>{repo.name}</span><small>{snapshot.workstreams.filter((item) => item.repositoryId === repo.id).length}</small></Link>)}{!recent.length && <p>No repositories match.</p>}</div>
-      <Link className="browse-link" href="/?allRepositories=1">Browse all {snapshot.repositories.length}</Link>
+      <div className="repo-list">{recent.map((repo) => <Link key={repo.id} href={`/app?repository=${encodeURIComponent(repo.id)}`} onClick={() => setMobile(false)}><span className="repo-avatar">{repo.name[0]?.toUpperCase()}</span><span>{repo.name}</span><small>{snapshot.workstreams.filter((item) => item.repositoryId === repo.id).length}</small></Link>)}{!recent.length && <p>No repositories match.</p>}</div>
+      <Link className="browse-link" href="/app?allRepositories=1">Browse all {snapshot.repositories.length}</Link>
       <div className="side-heading"><span>Paseo hosts</span><small>{snapshot.hosts.length}</small></div>
-      <div className="host-list">{snapshot.hosts.map((host) => <Link href="/settings#paseo" key={host.id}><i className="online"/><Bot /> <span>{host.name}</span></Link>)}</div>
-      <div className="sidebar-bottom"><Nav href="/settings" active={pathname.startsWith("/settings")} icon={<Settings />}>Settings</Nav><button><ChevronsLeft />Collapse sidebar</button></div>
+      <div className="host-list">{snapshot.hosts.map((host) => <Link href="/app/settings#paseo" key={host.id}><i className="online"/><Bot /> <span>{host.name}</span></Link>)}</div>
+      <div className="sidebar-bottom"><Nav href="/app/settings" active={pathname.startsWith("/app/settings")} icon={<Settings />}>Settings</Nav><button><ChevronsLeft />Collapse sidebar</button></div>
     </aside>
-    <main className="main-area"><div className="topbar"><span>{pathname.startsWith("/plans") ? "Plans" : pathname.startsWith("/settings") ? "Settings" : pathname.startsWith("/workstreams/") ? "Workstream" : "All workstreams"}</span><span className="host-health"><i className="online" />{snapshot.hosts.length}/{snapshot.hosts.length} paired</span></div>{children}</main>
+    <main className="main-area"><div className="topbar"><span>{pathname.startsWith("/app/plans") ? "Plans" : pathname.startsWith("/app/settings") ? "Settings" : pathname.startsWith("/app/workstreams/") ? "Workstream" : "All workstreams"}</span><span className="host-health"><i className="online" />{snapshot.hosts.length}/{snapshot.hosts.length} paired</span></div>{children}</main>
     <NewWorkstreamDialog open={newOpen} onClose={() => setNewOpen(false)} />
   </div>;
 }

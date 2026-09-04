@@ -20,7 +20,7 @@ export function WorkstreamDetail({ id }: { id: string }) {
   const [tab, setTab] = useState<"timeline" | "plan" | "findings">(params.get("tab") === "plan" ? "plan" : "timeline");
   const [prompt, setPrompt] = useState("");
   const [busy, setBusy] = useState("");
-  if (!workstream) return <section className="page"><div className="empty-state standalone"><h2>Workstream not found</h2><Link className="button" href="/">Back to dashboard</Link></div></section>;
+  if (!workstream) return <section className="page"><div className="empty-state standalone"><h2>Workstream not found</h2><Link className="button" href="/app">Back to dashboard</Link></div></section>;
   const action = async (name: string, payload: Record<string, unknown> = {}) => { setBusy(name); try { await request(`/api/workstreams/${id}/actions`, { method: "POST", body: JSON.stringify({ action: name, ...payload }) }); } finally { setBusy(""); } };
   const stageIndex = Math.max(0, stages.findIndex(([, phases]) => (phases as readonly string[]).includes(workstream.phase)));
   const primary = workstream.phase === "attention" && !workstream.workspaceId ? <button className="primary" onClick={() => void action("retry-provision")} disabled={Boolean(busy)}><RotateCcw/>Retry provisioning</button>
@@ -31,7 +31,7 @@ export function WorkstreamDetail({ id }: { id: string }) {
     : plan && plan.status === "product-feature" ? <button className="primary" onClick={() => void request(`/api/plans/${plan.id}/actions`, { method: "POST", body: JSON.stringify({ action: "status", status: "implementation-ready" }) })}><Check/>Mark ready to build</button> : null;
   async function followup(event: React.FormEvent) { event.preventDefault(); if (!prompt.trim()) return; const text = prompt; setPrompt(""); await action("followup", { prompt: text }); }
   return <section className="workstream-page">
-    <header className="workstream-header"><div><div className="breadcrumbs"><Link href="/">Workstreams</Link><span>›</span><span>{workstream.repositoryFullName}</span></div><div className="title-line"><h1>{workstream.name}</h1><StatusChip value={workstream.status}/></div><a href={workstream.repositoryUrl + "/tree/" + workstream.branchName} target="_blank" rel="noreferrer"><GitBranch/>{workstream.branchName}<ArrowUpRight/></a></div><div>{primary}</div></header>
+    <header className="workstream-header"><div><div className="breadcrumbs"><Link href="/app">Workstreams</Link><span>›</span><span>{workstream.repositoryFullName}</span></div><div className="title-line"><h1>{workstream.name}</h1><StatusChip value={workstream.status}/></div><a href={workstream.repositoryUrl + "/tree/" + workstream.branchName} target="_blank" rel="noreferrer"><GitBranch/>{workstream.branchName}<ArrowUpRight/></a></div><div>{primary}</div></header>
     <div className="stage-rail">{stages.map(([label], index) => <div className={index < stageIndex ? "complete" : index === stageIndex ? "active" : ""} key={label}><span>{index < stageIndex ? <Check/> : <Circle/>}</span><strong>{label}</strong><i/></div>)}</div>
     <div className="workstream-body"><div className="workstream-main">
       <div className="tabs"><button className={tab === "timeline" ? "active" : ""} onClick={() => setTab("timeline")}><MessageSquare/>Timeline</button><button className={tab === "plan" ? "active" : ""} onClick={() => setTab("plan")}><GitBranch/>Captured plan{plan && <i/>}</button><button className={tab === "findings" ? "active" : ""} onClick={() => setTab("findings")}><ShieldCheck/>Findings</button></div>

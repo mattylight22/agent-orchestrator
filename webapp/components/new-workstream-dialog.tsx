@@ -34,7 +34,7 @@ export function NewWorkstreamDialog({ open, onClose }: { open: boolean; onClose(
     event.preventDefault(); setBusy(true);
     try {
       const result = await request<{ id: string }>("/api/workstreams", { method: "POST", body: JSON.stringify({ name, brief, repositoryId, hostId, prefix: snapshot.settings.branchPrefix, baseBranch: repository?.defaultBranch ?? snapshot.settings.defaultBaseBranch }) });
-      onClose(); router.push(`/workstreams/${result.id}`);
+      onClose(); router.push(`/app/workstreams/${result.id}`);
     } finally { setBusy(false); }
   }
   return <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><form className="dialog" onSubmit={submit}>

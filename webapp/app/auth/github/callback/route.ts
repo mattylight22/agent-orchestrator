@@ -17,9 +17,9 @@ export async function GET(request: Request) {
     const credential = await exchangeGithubCode(code);
     await storeGithubConnection(user.id, credential);
     await syncGithubRepositories(user.id);
-    return NextResponse.redirect(new URL("/settings?github=connected", appUrl));
+    return NextResponse.redirect(new URL("/app/settings?github=connected", appUrl));
   } catch (error) {
     const message = error instanceof Error ? error.message : "GitHub connection failed";
-    return NextResponse.redirect(new URL(`/settings?githubError=${encodeURIComponent(message)}`, appUrl));
+    return NextResponse.redirect(new URL(`/app/settings?githubError=${encodeURIComponent(message)}`, appUrl));
   }
 }
