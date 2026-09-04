@@ -22,7 +22,8 @@ Parameters:
     Type: AWS::EC2::Subnet::Id
   InstanceType:
     Type: String
-    Default: t3.large
+    Default: t3.medium
+    Description: t3.medium is a cost-conscious starting point for one active agent. Increase the size for concurrent agents or heavier builds.
     AllowedValues: [t3.medium, t3.large, t3.xlarge, m7i-flex.large, m7i-flex.xlarge]
   RootVolumeSize:
     Type: Number

@@ -364,8 +364,6 @@ tr:hover .delete-trigger, .delete-trigger:focus-visible { opacity: 1; color: var
 .role-icon { width: 28px; height: 28px; border-radius: 7px; background: var(--brand-soft); color: var(--brand); display: grid; place-items: center; }
 .role-card .field-grid { padding: 12px; grid-template-columns: repeat(4,minmax(0,1fr)); }
 .role-card select { width: 100%; }
-.security-note { display: flex; gap: 10px; padding: 10px; background: var(--surface-2); border-radius: 7px; margin-bottom: 10px; }
-.security-note p { color: var(--text-2); margin: 3px 0 0; }
 
 .login-page { min-height: 100vh; display: grid; place-items: center; padding: 72px 24px 32px; position: relative; background: var(--bg); }
 .login-page::before { content: ""; position: absolute; inset: 0 0 auto; height: 6px; background: var(--brand); }
@@ -568,8 +566,6 @@ tr:hover .delete-trigger, .delete-trigger:focus-visible { opacity: 1; color: var
 .aws-launch-card li { display: flex; align-items: center; gap: 8px; }
 .aws-launch-card li svg { width: 14px; color: #2f8064; }
 .aws-actions { display: flex; gap: 9px; flex-wrap: wrap; }
-.aws-publish-note { margin: 18px 0 0; padding: 12px; display: flex; align-items: flex-start; gap: 9px; border-radius: 7px; background: #f5f0e6; color: var(--marketing-muted); font-size: 11px; }
-.aws-publish-note svg { flex: 0 0 auto; width: 15px; color: #866a37; }
 .after-launch { margin-top: 20px; }
 .verify-section > p { color: #aaa294; font-size: 13px; }
 .verify-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 28px; }

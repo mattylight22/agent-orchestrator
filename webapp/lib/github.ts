@@ -21,7 +21,7 @@ function installationAccount(installation: { account?: unknown }) {
 function githubConfig() {
   const clientId = process.env.GITHUB_CLIENT_ID;
   const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-  if (!clientId || !clientSecret) throw new Error("GitHub App OAuth is not configured");
+  if (!clientId || !clientSecret) throw new Error("GitHub connections are temporarily unavailable");
   return { clientId, clientSecret };
 }
 

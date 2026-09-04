@@ -8,7 +8,7 @@ export async function GET() {
   try {
     await requireUser();
     const clientId = process.env.GITHUB_CLIENT_ID;
-    if (!clientId) throw new Error("GITHUB_CLIENT_ID is not configured");
+    if (!clientId) throw new Error("GitHub connections are temporarily unavailable");
     const state = randomBytes(24).toString("base64url");
     const store = await cookies();
     store.set("agent-lens-github-state", state, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 600 });

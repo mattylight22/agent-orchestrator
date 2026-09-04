@@ -5,9 +5,9 @@ interface Envelope { v: 1; iv: string; tag: string; data: string }
 
 function key(): Buffer {
   const raw = process.env.AGENT_LENS_ENCRYPTION_KEY;
-  if (!raw) throw new Error("AGENT_LENS_ENCRYPTION_KEY is not configured");
+  if (!raw) throw new Error("Secure connections are temporarily unavailable");
   const value = Buffer.from(raw, "base64");
-  if (value.length !== 32) throw new Error("AGENT_LENS_ENCRYPTION_KEY must be a base64-encoded 32-byte key");
+  if (value.length !== 32) throw new Error("Secure connections are temporarily unavailable");
   return value;
 }
 
