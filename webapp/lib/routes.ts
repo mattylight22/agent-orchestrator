@@ -2,6 +2,7 @@ export function isPublicPath(pathname: string) {
   return pathname === "/"
     || pathname === "/product"
     || pathname === "/security"
+    || pathname === "/docs/setup"
     || pathname === "/login"
     || pathname === "/robots.txt"
     || pathname === "/sitemap.xml"

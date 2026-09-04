@@ -3,7 +3,7 @@ import { isPublicPath, safeProductDestination } from "./routes";
 
 describe("public web routes", () => {
   it("allows only the marketing and sign-in surfaces", () => {
-    expect(["/", "/product", "/security", "/login", "/robots.txt", "/sitemap.xml", "/api/auth/sign-in"].every(isPublicPath)).toBe(true);
+    expect(["/", "/product", "/security", "/docs/setup", "/login", "/robots.txt", "/sitemap.xml", "/api/auth/sign-in"].every(isPublicPath)).toBe(true);
     expect(["/app", "/app/plans", "/api/snapshot", "/settings"].some(isPublicPath)).toBe(false);
   });
 });

@@ -37,6 +37,8 @@ export function SnapshotProvider({ initial, children }: { initial: AppSnapshot; 
   const [toast, setToast] = useState<SnapshotContextValue["toast"]>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshInFlight = useRef<Promise<void> | null>(null);
+  const reconcileInFlight = useRef<Promise<void> | null>(null);
+  const workstreamIds = useRef(initial.workstreams.map((workstream) => workstream.id));
   const loadSnapshot = useCallback(async (showIndicator = false) => {
     if (refreshInFlight.current) return refreshInFlight.current;
     if (showIndicator) setRefreshing(true);
@@ -56,6 +58,22 @@ export function SnapshotProvider({ initial, children }: { initial: AppSnapshot; 
   }, []);
   const refresh = useCallback(() => loadSnapshot(true), [loadSnapshot]);
   const refreshInBackground = useCallback(() => { void loadSnapshot().catch(() => undefined); }, [loadSnapshot]);
+  const reconcilePaseo = useCallback(() => {
+    if (reconcileInFlight.current) return reconcileInFlight.current;
+    const pending = (async () => {
+      const response = await fetch("/api/paseo/reconcile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workstreamIds: workstreamIds.current }),
+      });
+      if (response.ok) await loadSnapshot();
+    })().catch(() => undefined).finally(() => {
+      if (reconcileInFlight.current === pending) reconcileInFlight.current = null;
+    });
+    reconcileInFlight.current = pending;
+    return pending;
+  }, [loadSnapshot]);
+  useEffect(() => { workstreamIds.current = snapshot.workstreams.map((workstream) => workstream.id); }, [snapshot.workstreams]);
   const scheduleBackgroundRefresh = useCallback((delay = 160) => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(refreshInBackground, delay);
@@ -88,9 +106,10 @@ export function SnapshotProvider({ initial, children }: { initial: AppSnapshot; 
   ), [snapshot.workstreams]);
   useEffect(() => {
     const interval = window.setInterval(() => {
-      if (document.visibilityState === "visible") refreshInBackground();
+      if (document.visibilityState === "visible") void reconcilePaseo();
     }, hasActiveWork ? 3_000 : 15_000);
-    const refreshWhenVisible = () => { if (document.visibilityState === "visible") refreshInBackground(); };
+    const refreshWhenVisible = () => { if (document.visibilityState === "visible") void reconcilePaseo(); };
+    void reconcilePaseo();
     window.addEventListener("focus", refreshWhenVisible);
     window.addEventListener("online", refreshWhenVisible);
     document.addEventListener("visibilitychange", refreshWhenVisible);
@@ -100,7 +119,7 @@ export function SnapshotProvider({ initial, children }: { initial: AppSnapshot; 
       window.removeEventListener("online", refreshWhenVisible);
       document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [hasActiveWork, refreshInBackground]);
+  }, [hasActiveWork, reconcilePaseo]);
   useEffect(() => {
     const theme = snapshot.settings.theme;
     document.documentElement.dataset.theme = theme === "system" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : theme;

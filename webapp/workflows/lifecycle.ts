@@ -5,6 +5,7 @@ import { defaultAppSettings, replaceReviewLog, resolveRoleConfig, type AgentRole
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getGithubAccessToken } from "@/lib/github";
 import { ensureHostRepositoryMapping, providerCatalog, waitForProviderSnapshot, withPaseoClient } from "@/lib/paseo";
+import { synchronizePaseoAgent } from "@/lib/paseo-sync";
 
 type Row = Record<string, any>;
 
@@ -132,55 +133,9 @@ async function launchAgent(userId: string, workstreamId: string, role: AgentRole
   return agentId;
 }
 
-function titleFromPlan(body: string) {
-  return body.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? "Implementation plan";
-}
-
 async function synchronizeAgent(userId: string, workstreamId: string, agentId: string): Promise<{ terminal: boolean; attention: boolean }> {
   "use step";
-  const admin = createSupabaseAdminClient();
-  const [{ data: workstream, error }, { data: run }] = await Promise.all([
-    admin.from("workstreams").select("host_id").eq("user_id", userId).eq("id", workstreamId).single(),
-    admin.from("agent_runs").select("role").eq("user_id", userId).eq("paseo_agent_id", agentId).maybeSingle(),
-  ]);
-  if (error || !workstream) throw error ?? new Error("Workstream not found");
-  const sync = await withPaseoClient(userId, workstream.host_id, async (client) => {
-    const agent = client.agents.ref(agentId);
-    const page = await agent.timeline.refetch({ limit: 500, projection: "projected" });
-    return { page, agent: page.agent ?? agent.current() };
-  });
-  const messages = (sync.page.entries as any[]).flatMap((entry) => {
-    const item = entry.item;
-    if (!["assistant_message", "user_message", "reasoning", "error"].includes(item.type)) return [];
-    const content = item.type === "error" ? item.message : item.text;
-    if (!content) return [];
-    return [{ id: `${agentId}:${"messageId" in item ? item.messageId : `${sync.page.epoch ?? "timeline"}:${entry.seqStart}-${entry.seqEnd}:${item.type}`}`, user_id: userId, workstream_id: workstreamId, role: item.type === "assistant_message" ? "assistant" : item.type === "user_message" ? "user" : "system", kind: "message", content, agent_role: run?.role ?? null, source_updated_at: entry.timestamp, created_at: entry.timestamp }];
-  });
-  if (messages.length) {
-    const { error: timelineError } = await admin.from("timeline_items").upsert(messages, { onConflict: "user_id,id" });
-    if (timelineError) throw timelineError;
-  }
-  const permissions = (sync.agent?.pendingPermissions ?? []) as any[];
-  for (const permission of permissions) {
-    if (permission.kind === "plan" && typeof permission.input?.plan === "string" && permission.input.plan.trim()) {
-      const planId = `plan:${workstreamId}`;
-      const now = new Date().toISOString();
-      const { error: planError } = await admin.from("plans").upsert({ id: planId, user_id: userId, workstream_id: workstreamId, title: titleFromPlan(permission.input.plan), body: permission.input.plan, status: "product-feature", source_agent_id: agentId, source_permission_id: permission.id, source_updated_at: now, deleted_at: null }, { onConflict: "user_id,workstream_id" });
-      if (planError) throw planError;
-    }
-    if (permission.kind === "question" && Array.isArray(permission.input?.questions)) {
-      const id = `${agentId}:${permission.id}`;
-      await admin.from("agent_questions").upsert({ id, user_id: userId, workstream_id: workstreamId, agent_id: agentId, request_id: permission.id, status: "pending", prompts: permission.input.questions }, { onConflict: "user_id,agent_id,request_id" });
-      await admin.from("timeline_items").upsert({ id: `question:${id}`, user_id: userId, workstream_id: workstreamId, role: "system", kind: "question", content: JSON.stringify({ agentId, requestId: permission.id, status: "pending", questions: permission.input.questions }), source_updated_at: new Date().toISOString(), created_at: new Date().toISOString() }, { onConflict: "user_id,id" });
-    }
-  }
-  const attention = permissions.some((item) => item.kind === "plan" || item.kind === "question");
-  const status = String(sync.agent?.status ?? "running");
-  const terminal = ["idle", "done", "error", "failed", "stopped"].includes(status) || attention;
-  const state = attention ? "attention" : ["error", "failed"].includes(status) ? "failed" : terminal ? "idle" : "running";
-  await admin.from("agent_runs").update({ state, source_updated_at: new Date().toISOString() }).eq("user_id", userId).eq("paseo_agent_id", agentId);
-  await admin.from("workstreams").update({ agent_state: state, source_updated_at: new Date().toISOString() }).eq("user_id", userId).eq("id", workstreamId);
-  return { terminal, attention };
+  return synchronizePaseoAgent(userId, workstreamId, agentId);
 }
 
 async function failWorkstream(userId: string, workstreamId: string, runId: string, error: unknown) {

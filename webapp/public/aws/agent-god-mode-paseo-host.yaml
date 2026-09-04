@@ -1,0 +1,163 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Agent God Mode host with Paseo, Tailscale, Claude Code, Codex, Cursor Agent, and Session Manager.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label: { default: Network }
+        Parameters: [VpcId, SubnetId]
+      - Label: { default: Compute }
+        Parameters: [InstanceType, RootVolumeSize, CustomAmiId]
+      - Label: { default: Paseo }
+        Parameters: [EnablePaseoRelay]
+    ParameterLabels:
+      VpcId: { default: VPC with outbound internet access }
+      SubnetId: { default: Subnet with outbound internet access }
+      CustomAmiId: { default: Optional golden AMI }
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+  InstanceType:
+    Type: String
+    Default: t3.large
+    AllowedValues: [t3.medium, t3.large, t3.xlarge, m7i-flex.large, m7i-flex.xlarge]
+  RootVolumeSize:
+    Type: Number
+    Default: 100
+    MinValue: 40
+    MaxValue: 2048
+  LatestUbuntuAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id
+  CustomAmiId:
+    Type: String
+    Default: ""
+    Description: Leave blank for the latest Canonical Ubuntu 24.04 amd64 AMI in this region.
+  EnablePaseoRelay:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+
+Conditions:
+  UseCustomAmi: !Not [!Equals [!Ref CustomAmiId, ""]]
+
+Resources:
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ec2.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Tags:
+        - { Key: Application, Value: AgentGodMode }
+
+  InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [!Ref InstanceRole]
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Outbound-only access for the Agent God Mode Paseo host
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - { Key: Name, Value: !Sub "${AWS::StackName}-paseo" }
+
+  PaseoHost:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !If [UseCustomAmi, !Ref CustomAmiId, !Ref LatestUbuntuAmiId]
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref InstanceProfile
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds: [!Ref SecurityGroup]
+      MetadataOptions:
+        HttpEndpoint: enabled
+        HttpTokens: required
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeType: gp3
+            VolumeSize: !Ref RootVolumeSize
+            Encrypted: true
+            DeleteOnTermination: true
+      Tags:
+        - { Key: Name, Value: !Sub "${AWS::StackName}-paseo" }
+        - { Key: Application, Value: AgentGodMode }
+      UserData:
+        Fn::Base64: !Sub |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          exec > >(tee /var/log/agent-god-mode-bootstrap.log | logger -t agent-god-mode -s 2>/dev/console) 2>&1
+          export DEBIAN_FRONTEND=noninteractive
+
+          apt-get update
+          apt-get install -y ca-certificates curl git jq unzip build-essential
+
+          curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+          apt-get install -y nodejs
+          curl -fsSL https://tailscale.com/install.sh | sh
+
+          install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /etc/apt/keyrings/githubcli-archive-keyring.gpg
+          chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list
+          apt-get update
+          apt-get install -y gh
+
+          npm install -g @getpaseo/cli
+          sudo -u ubuntu -H bash -lc 'curl -fsSL https://claude.ai/install.sh | bash'
+          sudo -u ubuntu -H bash -lc 'curl -fsSL https://chatgpt.com/codex/install.sh | sh'
+          sudo -u ubuntu -H bash -lc 'curl https://cursor.com/install -fsS | bash'
+
+          printf '%s\n' 'export PATH="$HOME/.local/bin:$HOME/.cursor/bin:$PATH"' >> /home/ubuntu/.profile
+          chown ubuntu:ubuntu /home/ubuntu/.profile
+
+          cat > /etc/systemd/system/paseo.service <<'UNIT'
+          [Unit]
+          Description=Paseo agent daemon
+          Wants=network-online.target
+          After=network-online.target tailscaled.service
+
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          User=ubuntu
+          Group=ubuntu
+          Environment=HOME=/home/ubuntu
+          Environment=PASEO_HOME=/home/ubuntu/.paseo
+          Environment=PATH=/home/ubuntu/.local/bin:/home/ubuntu/.cursor/bin:/usr/local/bin:/usr/bin:/bin
+          Environment=PASEO_RELAY_ENABLED=${EnablePaseoRelay}
+          ExecStart=/usr/bin/env paseo daemon start
+          ExecStop=/usr/bin/env paseo daemon stop
+          TimeoutStartSec=120
+
+          [Install]
+          WantedBy=multi-user.target
+          UNIT
+
+          systemctl daemon-reload
+          systemctl enable --now paseo.service
+
+Outputs:
+  InstanceId:
+    Description: EC2 instance created for Paseo.
+    Value: !Ref PaseoHost
+  SessionManagerCommand:
+    Description: Authenticate the provider CLIs without opening an inbound SSH port.
+    Value: !Sub "aws ssm start-session --target ${PaseoHost} --region ${AWS::Region}"
+  BootstrapLog:
+    Description: Inspect this file if an installation step fails.
+    Value: /var/log/agent-god-mode-bootstrap.log
