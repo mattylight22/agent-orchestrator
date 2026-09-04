@@ -4,12 +4,3 @@ const DEFAULT_TEMPLATE_URL =
 export function getAwsTemplateUrl() {
   return process.env.AWS_CLOUDFORMATION_TEMPLATE_URL?.trim() || DEFAULT_TEMPLATE_URL;
 }
-
-export function getAwsQuickCreateUrl() {
-  const params = new URLSearchParams({
-    templateURL: getAwsTemplateUrl(),
-    stackName: "agent-god-mode-paseo",
-  });
-
-  return `https://console.aws.amazon.com/cloudformation/home?region=us-east-2#/stacks/quickcreate?${params.toString()}`;
-}

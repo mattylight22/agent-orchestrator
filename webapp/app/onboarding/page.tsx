@@ -3,7 +3,7 @@ import { OnboardingPage } from "@/components/onboarding-page";
 import { SnapshotProvider } from "@/components/snapshot-provider";
 import { loadSnapshot } from "@/lib/data";
 import { onboardingState } from "@/lib/onboarding";
-import { getAwsQuickCreateUrl } from "@/lib/aws-template";
+import { getAwsTemplateUrl } from "@/lib/aws-template";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +16,6 @@ export default async function Onboarding() {
     throw error;
   }
   if (onboardingState(snapshot).complete) redirect("/app");
-  const awsQuickCreateUrl = getAwsQuickCreateUrl();
-  return <SnapshotProvider initial={snapshot}><OnboardingPage awsQuickCreateUrl={awsQuickCreateUrl}/></SnapshotProvider>;
+  const awsTemplateUrl = getAwsTemplateUrl();
+  return <SnapshotProvider initial={snapshot}><OnboardingPage awsTemplateUrl={awsTemplateUrl}/></SnapshotProvider>;
 }

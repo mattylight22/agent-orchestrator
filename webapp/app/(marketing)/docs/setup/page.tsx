@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Check, Cloud, Download, ExternalLink, Laptop, Network, Server, Terminal, Wifi } from "lucide-react";
-import { getAwsQuickCreateUrl } from "@/lib/aws-template";
+import { ArrowRight, Check, Cloud, ExternalLink, Laptop, Network, Server, Terminal, Wifi } from "lucide-react";
+import { AwsDeployControls } from "@/components/aws-deploy-controls";
+import { getAwsTemplateUrl } from "@/lib/aws-template";
 
 export const metadata: Metadata = {
   title: "Set up Paseo",
   description: "Install a Paseo agent host, connect it through encrypted Relay or Tailscale, and prepare Claude Code, Codex, and Cursor CLI.",
 };
 
-const quickCreateUrl = getAwsQuickCreateUrl();
+const templateUrl = getAwsTemplateUrl();
 
 function Code({ children }: { children: string }) {
   return <pre className="setup-code"><code>{children}</code></pre>;
@@ -75,7 +76,7 @@ export default function SetupPage() {
 
     <section className="setup-section aws-section" id="aws">
       <div className="setup-heading"><span>06 · AWS</span><h2>Launch a ready-to-authenticate EC2 host.</h2><p>The CloudFormation template creates an Ubuntu instance with no inbound ports, Session Manager access, an encrypted root volume, and Paseo, Tailscale, GitHub CLI, Claude Code, Codex, and Cursor Agent already installed. Sign in to each provider after the instance starts.</p></div>
-      <div className="aws-launch-card"><div><Server/><span><strong>Agent God Mode Paseo Host</strong><small>Ubuntu 24.04 · t3.medium default · 100 GB gp3 · Session Manager access</small></span></div><ul><li><Check/>Cost-conscious default for one active agent</li><li><Check/>Instance size remains configurable for heavier builds or concurrency</li><li><Check/>No public IP or inbound port required for Relay</li></ul><div className="aws-actions"><a className="marketing-button" href={quickCreateUrl} target="_blank" rel="noreferrer">Launch stack in AWS <ExternalLink/></a><a className="marketing-secondary-button" href="/aws/agent-god-mode-paseo-host.yaml" download>Download AWS template <Download/></a></div></div>
+      <div className="aws-launch-card"><div><Server/><span><strong>Agent God Mode Paseo Host</strong><small>Ubuntu 24.04 · t3.medium default · 100 GB gp3 · Session Manager access</small></span></div><ul><li><Check/>Cost-conscious default for one active agent</li><li><Check/>Instance size remains configurable for heavier builds or concurrency</li><li><Check/>No public IP or inbound port required for Relay</li></ul><AwsDeployControls templateUrl={templateUrl}/></div>
       <ol className="setup-compact-steps after-launch"><li><span>1</span><div><h3>Open the instance</h3><p>In the stack Outputs, copy the Session Manager command and run it from an authenticated AWS CLI.</p></div></li><li><span>2</span><div><h3>Authenticate providers</h3><p>Run logins as the same user that runs Paseo. Open the displayed URLs on your local computer and enter or paste the one-time codes back into the remote terminal.</p><Code>{"sudo -iu ubuntu\nclaude auth login\ncodex login --device-auth\ncursor-agent login\ngh auth login --web"}</Code><p>Codex has a dedicated device-code flow. Claude supports remote URL/code completion. Cursor currently has no documented device-code flag; use <code>CURSOR_API_KEY</code> if its browser flow cannot complete.</p></div></li><li><span>3</span><div><h3>Connect the host</h3><p>Choose Tailscale Direct in settings for a private browser-to-host connection, or generate a Relay pairing offer:</p><Code>{"paseo daemon pair --relay"}</Code></div></li></ol>
       <External href="https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html">AWS Systems Manager Session Manager</External>
     </section>

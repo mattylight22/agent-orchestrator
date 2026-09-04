@@ -5,10 +5,11 @@ import { useEffect, useState } from "react";
 import { ArrowRight, Check, Cloud, ExternalLink, Github, Laptop, Server, ShieldCheck } from "lucide-react";
 import appIcon from "../../resources/icon.png";
 import { onboardingState } from "@/lib/onboarding";
+import { AwsDeployControls } from "./aws-deploy-controls";
 import { useAgentLens } from "./snapshot-provider";
 import { PaseoSetupWizard } from "./settings-page";
 
-export function OnboardingPage({ awsQuickCreateUrl }: { awsQuickCreateUrl: string | null }) {
+export function OnboardingPage({ awsTemplateUrl }: { awsTemplateUrl: string }) {
   const { snapshot, request } = useAgentLens();
   const state = onboardingState(snapshot);
   const [paseoWizardOpen, setPaseoWizardOpen] = useState(false);
@@ -41,7 +42,7 @@ export function OnboardingPage({ awsQuickCreateUrl }: { awsQuickCreateUrl: strin
         <p>Your Paseo host is where repositories, agent subscriptions, and execution stay. Connect a machine you already manage or deploy a dedicated host in your AWS account.</p>
         <div className="onboarding-options">
           <article><Laptop/><div><strong>Use your computer or server</strong><p>Run Paseo locally or on an existing machine, then connect through Tailscale or encrypted Relay. Local setup works well, but agents pause whenever that computer sleeps or disconnects.</p></div><button className="primary" onClick={() => setPaseoWizardOpen(true)}>Connect host<ArrowRight/></button></article>
-          <article className="recommended"><span>Recommended</span><Cloud/><div><strong>Deploy an always-on AWS host</strong><p>Keep long-running agents uninterrupted on an EC2 instance with Paseo and the supported agent CLIs installed.</p></div>{awsQuickCreateUrl ? <a className="primary button" href={awsQuickCreateUrl} target="_blank" rel="noreferrer">Launch in AWS<ExternalLink/></a> : <a className="button" href="/aws/agent-god-mode-paseo-host.yaml" download>Download AWS template</a>}</article>
+          <article className="recommended"><span>Recommended</span><Cloud/><div><strong>Deploy an always-on AWS host</strong><p>Keep long-running agents uninterrupted on an EC2 instance with Paseo and the supported agent CLIs installed.</p></div><AwsDeployControls templateUrl={awsTemplateUrl} compact/></article>
         </div>
         <div className="onboarding-help"><span>Want to install Paseo and the provider CLIs yourself?</span><Link href="/docs/setup" target="_blank">Open the manual setup guide<ExternalLink/></Link></div>
       </section>}
