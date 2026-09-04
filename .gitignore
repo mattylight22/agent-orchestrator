@@ -1,0 +1,13 @@
+node_modules/
+.electron-dev/
+out/
+dist/
+release/
+coverage/
+playwright-report/
+test-results/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
