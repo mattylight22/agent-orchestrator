@@ -30,6 +30,8 @@ const realtimeTables = [
   "review_iterations",
   "audit_events",
   "workflow_runs",
+  "aws_accounts",
+  "aws_paseo_deployments",
 ] as const;
 
 export function SnapshotProvider({ initial, children }: { initial: AppSnapshot; children: React.ReactNode }) {

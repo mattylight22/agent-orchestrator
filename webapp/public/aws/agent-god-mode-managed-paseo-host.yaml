@@ -1,0 +1,130 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Paseo host managed through an Agent God Mode AWS account connection.
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+  InstanceProfileName:
+    Type: String
+  ConnectionId:
+    Type: String
+    AllowedPattern: '^[a-f0-9]{12}$'
+  DeploymentId:
+    Type: String
+    AllowedPattern: '^[a-f0-9]{24}$'
+  AssociatePublicIpAddress:
+    Type: String
+    AllowedValues: ["true", "false"]
+  InstanceType:
+    Type: String
+    Default: t3.medium
+    AllowedValues: [t3.medium, t3.large, t3.xlarge, m7i-flex.large, m7i-flex.xlarge]
+  RootVolumeSize:
+    Type: Number
+    Default: 100
+    MinValue: 40
+    MaxValue: 2048
+  LatestUbuntuAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id
+
+Conditions:
+  AssignPublicIp: !Equals [!Ref AssociatePublicIpAddress, "true"]
+
+Resources:
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Outbound-only access for an Agent God Mode Paseo host
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - { Key: Name, Value: !Sub "${AWS::StackName}-paseo" }
+        - { Key: AgentGodModeConnection, Value: !Ref ConnectionId }
+        - { Key: AgentGodModeDeployment, Value: !Ref DeploymentId }
+
+  PaseoHost:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref LatestUbuntuAmiId
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref InstanceProfileName
+      MetadataOptions:
+        HttpEndpoint: enabled
+        HttpTokens: required
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: !If [AssignPublicIp, true, false]
+          DeleteOnTermination: true
+          DeviceIndex: "0"
+          GroupSet: [!Ref SecurityGroup]
+          SubnetId: !Ref SubnetId
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeType: gp3
+            VolumeSize: !Ref RootVolumeSize
+            Encrypted: true
+            DeleteOnTermination: true
+      Tags:
+        - { Key: Name, Value: !Sub "${AWS::StackName}-paseo" }
+        - { Key: Application, Value: AgentGodMode }
+        - { Key: AgentGodModeConnection, Value: !Ref ConnectionId }
+        - { Key: AgentGodModeDeployment, Value: !Ref DeploymentId }
+      UserData:
+        Fn::Base64: !Sub |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          exec > >(tee /var/log/agent-god-mode-bootstrap.log | logger -t agent-god-mode -s 2>/dev/console) 2>&1
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y ca-certificates curl git jq unzip build-essential
+          curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+          apt-get install -y nodejs
+          curl -fsSL https://tailscale.com/install.sh | sh
+          install -m 0755 -d /etc/apt/keyrings
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /etc/apt/keyrings/githubcli-archive-keyring.gpg
+          chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg
+          echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list
+          apt-get update
+          apt-get install -y gh
+          npm install -g @getpaseo/cli
+          sudo -u ubuntu -H bash -lc 'curl -fsSL https://claude.ai/install.sh | bash'
+          sudo -u ubuntu -H bash -lc 'curl -fsSL https://chatgpt.com/codex/install.sh | sh'
+          sudo -u ubuntu -H bash -lc 'curl https://cursor.com/install -fsS | bash'
+          printf '%s\n' 'export PATH="$HOME/.local/bin:$HOME/.cursor/bin:$PATH"' >> /home/ubuntu/.profile
+          chown ubuntu:ubuntu /home/ubuntu/.profile
+          cat > /etc/systemd/system/paseo.service <<'UNIT'
+          [Unit]
+          Description=Paseo agent daemon
+          Wants=network-online.target
+          After=network-online.target tailscaled.service
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          User=ubuntu
+          Group=ubuntu
+          Environment=HOME=/home/ubuntu
+          Environment=PASEO_HOME=/home/ubuntu/.paseo
+          Environment=PATH=/home/ubuntu/.local/bin:/home/ubuntu/.cursor/bin:/usr/local/bin:/usr/bin:/bin
+          Environment=PASEO_RELAY_ENABLED=true
+          ExecStart=/usr/bin/env paseo daemon start
+          ExecStop=/usr/bin/env paseo daemon stop
+          TimeoutStartSec=120
+          [Install]
+          WantedBy=multi-user.target
+          UNIT
+          systemctl daemon-reload
+          systemctl enable --now paseo.service
+
+Outputs:
+  InstanceId:
+    Value: !Ref PaseoHost
+  SessionManagerUrl:
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/systems-manager/session-manager/${PaseoHost}?region=${AWS::Region}
+  BootstrapLog:
+    Value: /var/log/agent-god-mode-bootstrap.log
+

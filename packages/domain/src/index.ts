@@ -24,6 +24,46 @@ export type AgentRole = "planner" | "builder" | "reviewer";
 export type PlanStatus = (typeof planStatuses)[number];
 export type PlanExecutionState = (typeof planExecutionStates)[number];
 export type PaseoTransport = "relay" | "tailscale";
+export const awsAccountStates = ["pending", "connected", "error"] as const;
+export const awsDeploymentStates = ["queued", "creating", "waiting-for-ssm", "pairing", "ready", "failed", "deleting", "deleted"] as const;
+export const awsRegions = ["us-east-1", "us-east-2", "us-west-1", "us-west-2"] as const;
+export const awsInstanceTypes = ["t3.medium", "t3.large", "t3.xlarge", "m7i-flex.large", "m7i-flex.xlarge"] as const;
+export type AwsAccountState = (typeof awsAccountStates)[number];
+export type AwsDeploymentState = (typeof awsDeploymentStates)[number];
+export type AwsRegion = (typeof awsRegions)[number];
+export type AwsInstanceType = (typeof awsInstanceTypes)[number];
+
+export interface AwsAccountConnection {
+  id: string;
+  name: string;
+  accountId: string | null;
+  roleArn: string | null;
+  state: AwsAccountState;
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AwsPaseoDeployment {
+  id: string;
+  awsAccountId: string;
+  name: string;
+  region: AwsRegion;
+  vpcId: string;
+  subnetId: string;
+  routeType: "nat" | "public";
+  associatePublicIp: boolean;
+  instanceType: AwsInstanceType;
+  volumeSize: number;
+  state: AwsDeploymentState;
+  stackName: string;
+  stackArn: string | null;
+  instanceId: string | null;
+  paseoHostId: string | null;
+  failureDetail: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface PaseoHost {
   id: string;
@@ -247,6 +287,10 @@ export interface AppSnapshot {
   providerCatalogs: Record<string, ProviderModel[]>;
   /** Repositories from the signed-in user's latest authored or merged pull requests. */
   recentRepositoryIds?: string[];
+  /** Web-only credentialless AWS account connections. */
+  awsAccounts?: AwsAccountConnection[];
+  /** Web-only Paseo hosts provisioned in connected AWS accounts. */
+  awsDeployments?: AwsPaseoDeployment[];
 }
 
 export const defaultAppSettings: AppSettings = {
@@ -287,8 +331,32 @@ export const createWorkstreamInputSchema = z.object({
   baseBranch: z.string().trim().min(1).max(120),
 });
 export const supabaseCredentialsSchema = z.object({ email: z.string().trim().email(), password: z.string().min(8) });
+export const awsRoleArnSchema = z.string().trim().regex(/^arn:aws:iam::\d{12}:role\/AgentGodModeCustomer-[a-f0-9]{12}$/, "Paste the CustomerRoleArn created for this connection");
+export const awsAccountIdSchema = z.string().regex(/^\d{12}$/, "AWS account IDs contain exactly 12 digits");
+export const createAwsDeploymentInputSchema = z.object({
+  awsAccountId: z.string().uuid(),
+  name: z.string().trim().min(1).max(64),
+  region: z.enum(awsRegions),
+  vpcId: z.string().regex(/^vpc-[a-f0-9]+$/),
+  subnetId: z.string().regex(/^subnet-[a-f0-9]+$/),
+  routeType: z.enum(["nat", "public"]),
+  associatePublicIp: z.boolean(),
+  instanceType: z.enum(awsInstanceTypes),
+  volumeSize: z.number().int().min(40).max(2048),
+});
 export type CreateHostInput = z.infer<typeof createHostInputSchema>;
 export type CreateWorkstreamInput = z.infer<typeof createWorkstreamInputSchema>;
+export type CreateAwsDeploymentInput = z.infer<typeof createAwsDeploymentInputSchema>;
+
+export function awsConnectionToken(id: string): string {
+  const token = id.toLowerCase().replace(/[^a-f0-9]/g, "").slice(0, 12);
+  if (token.length !== 12) throw new Error("Invalid AWS connection ID");
+  return token;
+}
+
+export function awsDeploymentStackName(id: string): string {
+  return `agent-god-mode-paseo-${id.toLowerCase().replace(/[^a-f0-9]/g, "").slice(0, 24)}`;
+}
 
 export const REVIEW_START = "<!-- agent-lens:review-log:start -->";
 export const REVIEW_END = "<!-- agent-lens:review-log:end -->";

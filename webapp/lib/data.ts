@@ -1,5 +1,5 @@
 import "server-only";
-import type { AppSettings, AppSnapshot, PaseoHost, PaseoTransport, Plan, Repository, Workstream } from "@agent-lens/domain";
+import type { AppSettings, AppSnapshot, AwsAccountConnection, AwsPaseoDeployment, PaseoHost, PaseoTransport, Plan, Repository, Workstream } from "@agent-lens/domain";
 import { defaultAppSettings } from "@agent-lens/domain";
 import { createSupabaseAdminClient } from "./supabase/admin";
 import { requireUser } from "./supabase/server";
@@ -40,7 +40,11 @@ export async function loadSnapshot(): Promise<AppSnapshot> {
   const { supabase, user } = await requireUser();
   const admin = createSupabaseAdminClient();
   const query = (table: string) => supabase.from(table).select("*").eq("user_id", user.id);
-  const [settingsResult, hostsResult, repositoriesResult, mappingsResult, workstreamsResult, agentsResult, timelineResult, plansResult, dependenciesResult, commentsResult, reviewsResult, auditResult, connectionsResult] = await Promise.all([
+  const optionalQuery = async (table: string) => {
+    const result = await query(table).is("deleted_at", null).order("created_at", { ascending: false });
+    return result.error?.code === "PGRST205" ? { data: [], error: null } : result;
+  };
+  const [settingsResult, hostsResult, repositoriesResult, mappingsResult, workstreamsResult, agentsResult, timelineResult, plansResult, dependenciesResult, commentsResult, reviewsResult, auditResult, connectionsResult, awsAccountsResult, awsDeploymentsResult] = await Promise.all([
     query("user_settings").maybeSingle(), query("paseo_hosts").is("deleted_at", null),
     query("repositories").is("deleted_at", null).order("github_updated_at", { ascending: false }), query("host_repository_mappings"),
     query("workstreams").is("deleted_at", null).order("created_at", { ascending: false }), query("agent_runs"),
@@ -48,8 +52,9 @@ export async function loadSnapshot(): Promise<AppSnapshot> {
     query("plan_dependencies"), query("plan_comments").is("deleted_at", null), query("review_iterations").order("iteration"),
     query("audit_events").order("created_at", { ascending: false }),
     admin.from("paseo_connections").select("host_id,transport").eq("user_id", user.id),
+    optionalQuery("aws_accounts"), optionalQuery("aws_paseo_deployments"),
   ]);
-  const firstError = [settingsResult, hostsResult, repositoriesResult, mappingsResult, workstreamsResult, agentsResult, timelineResult, plansResult, dependenciesResult, commentsResult, reviewsResult, auditResult, connectionsResult].find((item) => item.error)?.error;
+  const firstError = [settingsResult, hostsResult, repositoriesResult, mappingsResult, workstreamsResult, agentsResult, timelineResult, plansResult, dependenciesResult, commentsResult, reviewsResult, auditResult, connectionsResult, awsAccountsResult, awsDeploymentsResult].find((item) => item.error)?.error;
   if (firstError) throw firstError;
   const hostRows = (hostsResult.data ?? []) as Row[];
   const hostMap = new Map(hostRows.map((row) => [row.id, row]));
@@ -94,6 +99,8 @@ export async function loadSnapshot(): Promise<AppSnapshot> {
     updatedAt: row.github_updated_at, installations: row.installations ?? [],
     hostAvailability: mappingRows.filter((item) => item.repository_id === row.id).map((item) => ({ hostId: item.host_id, projectId: item.project_id, projectRootPath: item.project_root_path, available: true })),
   }));
+  const awsAccounts: AwsAccountConnection[] = ((awsAccountsResult.data ?? []) as Row[]).map((row) => ({ id: row.id, name: row.name, accountId: row.account_id, roleArn: row.role_arn, state: row.state, error: row.error, createdAt: row.created_at, updatedAt: row.updated_at }));
+  const awsDeployments: AwsPaseoDeployment[] = ((awsDeploymentsResult.data ?? []) as Row[]).map((row) => ({ id: row.id, awsAccountId: row.aws_account_id, name: row.name, region: row.region, vpcId: row.vpc_id, subnetId: row.subnet_id, routeType: row.route_type, associatePublicIp: row.associate_public_ip, instanceType: row.instance_type, volumeSize: row.volume_size, state: row.state, stackName: row.stack_name, stackArn: row.stack_arn, instanceId: row.instance_id, paseoHostId: row.paseo_host_id, failureDetail: row.failure_detail, createdAt: row.created_at, updatedAt: row.updated_at }));
   return {
     settings,
     cloud: { configured: true, signedIn: true, email: user.email ?? null, syncing: false, syncEnabled: true, lastSyncAt: new Date().toISOString(), error: null },
@@ -103,5 +110,7 @@ export async function loadSnapshot(): Promise<AppSnapshot> {
     recentRepositoryIds: Array.isArray((stored as Record<string, unknown> | undefined)?.recentGithubRepositoryIds)
       ? ((stored as Record<string, unknown>).recentGithubRepositoryIds as unknown[]).filter((id): id is string => typeof id === "string")
       : undefined,
+    awsAccounts,
+    awsDeployments,
   };
 }

@@ -9,6 +9,20 @@ export type AwsDeploymentRegion = (typeof AWS_DEPLOYMENT_REGIONS)[number]["id"];
 
 export const AWS_DEFAULT_DEPLOYMENT_REGION: AwsDeploymentRegion = "us-east-2";
 
+export interface AwsDefaultRoute {
+  DestinationCidrBlock?: string;
+  State?: string;
+  NatGatewayId?: string;
+  GatewayId?: string;
+}
+
+export function classifySubnetRoute(routes: AwsDefaultRoute[]): "nat" | "public" | null {
+  const route = routes.find((item) => item.DestinationCidrBlock === "0.0.0.0/0" && item.State !== "blackhole");
+  if (route?.NatGatewayId?.startsWith("nat-")) return "nat";
+  if (route?.GatewayId?.startsWith("igw-")) return "public";
+  return null;
+}
+
 export function buildAwsQuickCreateUrl(templateUrl: string, region: AwsDeploymentRegion) {
   const params = new URLSearchParams({
     templateURL: templateUrl,

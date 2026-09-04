@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Agent God Mode broker role for production Vercel OIDC sessions with an AWS-specific audience.
+
+Parameters:
+  VercelTeamSlug:
+    Type: String
+  VercelProjectName:
+    Type: String
+
+Resources:
+  VercelOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: !Sub https://oidc.vercel.com/${VercelTeamSlug}
+      ClientIdList: [sts.amazonaws.com]
+      Tags:
+        - { Key: Application, Value: AgentGodMode }
+
+  BrokerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AgentGodModeBroker
+      AssumeRolePolicyDocument:
+        Fn::Sub: |
+          {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Effect": "Allow",
+              "Principal": { "Federated": "${VercelOidcProvider}" },
+              "Action": "sts:AssumeRoleWithWebIdentity",
+              "Condition": {
+                "StringEquals": {
+                  "oidc.vercel.com/${VercelTeamSlug}:aud": "sts.amazonaws.com",
+                  "oidc.vercel.com/${VercelTeamSlug}:sub": "owner:${VercelTeamSlug}:project:${VercelProjectName}:environment:production"
+                }
+              }
+            }]
+          }
+      Policies:
+        - PolicyName: AssumeAgentGodModeCustomerRoles
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: sts:AssumeRole
+                Resource: arn:aws:iam::*:role/AgentGodModeCustomer-*
+                Condition:
+                  'Null':
+                    sts:ExternalId: "false"
+      Tags:
+        - { Key: Application, Value: AgentGodMode }
+
+Outputs:
+  BrokerRoleArn:
+    Value: !GetAtt BrokerRole.Arn

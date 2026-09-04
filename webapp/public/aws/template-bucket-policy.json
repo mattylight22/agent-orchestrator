@@ -1,0 +1,19 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PublicReadCloudFormationTemplates",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": [
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ],
+      "Resource": [
+        "arn:aws:s3:::agent-god-mode-cloudformation-931677066893-us-east-2/templates/agent-god-mode-paseo-host.yaml",
+        "arn:aws:s3:::agent-god-mode-cloudformation-931677066893-us-east-2/templates/agent-god-mode-aws-access.yaml",
+        "arn:aws:s3:::agent-god-mode-cloudformation-931677066893-us-east-2/templates/agent-god-mode-managed-paseo-host.yaml"
+      ]
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import { ArrowRight, Check, Cloud, ExternalLink, Github, Laptop, Server, ShieldC
 import appIcon from "../../resources/icon.png";
 import { onboardingState } from "@/lib/onboarding";
 import { AwsDeployControls } from "./aws-deploy-controls";
+import { AwsAccountWizard } from "./aws-account-wizard";
 import { useAgentLens } from "./snapshot-provider";
 import { PaseoSetupWizard } from "./settings-page";
 
@@ -13,6 +14,7 @@ export function OnboardingPage({ awsTemplateUrl }: { awsTemplateUrl: string }) {
   const { snapshot, request } = useAgentLens();
   const state = onboardingState(snapshot);
   const [paseoWizardOpen, setPaseoWizardOpen] = useState(false);
+  const [awsWizardOpen, setAwsWizardOpen] = useState(false);
   const [githubError, setGithubError] = useState("");
 
   useEffect(() => {
@@ -42,7 +44,7 @@ export function OnboardingPage({ awsTemplateUrl }: { awsTemplateUrl: string }) {
         <p>Your Paseo host is where repositories, agent subscriptions, and execution stay. Connect a machine you already manage or deploy a dedicated host in your AWS account.</p>
         <div className="onboarding-options">
           <article><Laptop/><div><strong>Use your computer or server</strong><p>Run Paseo locally or on an existing machine, then connect through Tailscale or encrypted Relay. Local setup works well, but agents pause whenever that computer sleeps or disconnects.</p></div><button className="primary" onClick={() => setPaseoWizardOpen(true)}>Connect host<ArrowRight/></button></article>
-          <article className="recommended"><span>Recommended</span><Cloud/><div><strong>Deploy an always-on AWS host</strong><p>Keep long-running agents uninterrupted on an EC2 instance with Paseo and the supported agent CLIs installed.</p></div><AwsDeployControls templateUrl={awsTemplateUrl} compact/></article>
+          <article className="recommended"><span>Recommended</span><Cloud/><div><strong>Deploy an always-on AWS host</strong><p>Keep long-running agents uninterrupted on an EC2 instance with Paseo and the supported agent CLIs installed.</p></div><AwsDeployControls templateUrl={awsTemplateUrl} compact onManagedDeploy={() => setAwsWizardOpen(true)}/></article>
         </div>
         <div className="onboarding-help"><span>Want to install Paseo and the provider CLIs yourself?</span><Link href="/docs/setup" target="_blank">Open the manual setup guide<ExternalLink/></Link></div>
       </section>}
@@ -52,5 +54,6 @@ export function OnboardingPage({ awsTemplateUrl }: { awsTemplateUrl: string }) {
       </section>}
     </div>
     {paseoWizardOpen && <PaseoSetupWizard request={request} onClose={() => setPaseoWizardOpen(false)}/>} 
+    {awsWizardOpen && <AwsAccountWizard onClose={() => setAwsWizardOpen(false)}/>}
   </main>;
 }
