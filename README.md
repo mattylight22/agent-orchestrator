@@ -26,7 +26,7 @@ npm run dev:web
 npm run build:web
 ```
 
-Set Vercel's Root Directory to `webapp` and configure the variables documented in [`webapp/.env.example`](webapp/.env.example). The public Supabase project URL and publishable key are compiled into the shared domain package. The Supabase secret key, GitHub client secret, and 32-byte credential encryption key must only be configured in Vercel.
+Set Vercel's Root Directory to `webapp` and configure the variables documented in [`webapp/.env.example`](webapp/.env.example). Configure `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for the browser and SSR clients. The Supabase secret key, GitHub client secret, and 32-byte credential encryption key must only be configured in Vercel.
 
 The GitHub callback is:
 

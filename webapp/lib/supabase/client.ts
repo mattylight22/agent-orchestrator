@@ -1,9 +1,10 @@
 "use client";
 import { createBrowserClient } from "@supabase/ssr";
-import { supabaseProject } from "@agent-lens/domain";
+import { getSupabasePublicConfig } from "./config";
 
 let client: ReturnType<typeof createBrowserClient> | undefined;
 export function createSupabaseBrowserClient() {
-  client ??= createBrowserClient(supabaseProject.url, supabaseProject.publishableKey);
+  const { url, publishableKey } = getSupabasePublicConfig();
+  client ??= createBrowserClient(url, publishableKey);
   return client;
 }
