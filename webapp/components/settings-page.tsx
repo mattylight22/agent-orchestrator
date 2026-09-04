@@ -150,7 +150,7 @@ function PaseoHosts({ hosts, providerCatalogs, request }: { hosts: PaseoHost[]; 
   </>;
 }
 
-function PaseoSetupWizard({ request, onClose }: { request<T = unknown>(url: string, init?: RequestInit): Promise<T>; onClose(): void }) {
+export function PaseoSetupWizard({ request, onClose }: { request<T = unknown>(url: string, init?: RequestInit): Promise<T>; onClose(): void }) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [transport, setTransport] = useState<PaseoTransport>("tailscale");
   const [name, setName] = useState("");

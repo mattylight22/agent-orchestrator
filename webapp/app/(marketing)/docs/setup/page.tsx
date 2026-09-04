@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Check, Cloud, Download, ExternalLink, Network, Server, Terminal, Wifi } from "lucide-react";
+import { ArrowRight, Check, Cloud, Download, ExternalLink, Laptop, Network, Server, Terminal, Wifi } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Set up Paseo",
@@ -42,6 +42,10 @@ export default function SetupPage() {
 
     <section className="setup-section" id="manual-setup">
       <div className="setup-heading"><span>02 · Quick start</span><h2>Three steps from a clean Linux host.</h2><p>Ubuntu 24.04 LTS is the recommended baseline. Run agents as a dedicated non-root user with access only to the repositories it should manage.</p></div>
+      <div className="setup-run-grid">
+        <article><Laptop/><div><span>Quickest start</span><h3>Run Paseo on your computer</h3><p>Your Mac or Linux computer can be the Paseo host. This is useful for trying Agent God Mode or keeping everything on hardware you already manage. Keep the machine awake, connected, and running Paseo while agents work.</p></div></article>
+        <article><Cloud/><div><span>Recommended for ongoing work</span><h3>Use an always-on server</h3><p>A dedicated cloud or company server keeps agents running through long plans, builds, and reviews without depending on a laptop staying awake. Your code and provider sessions still remain on infrastructure you control.</p></div></article>
+      </div>
       <ol className="setup-steps">
         <li><span>1</span><div><h3>Install Paseo</h3><p>Install Node.js 22 or newer, then install the current headless Paseo CLI.</p><Code>{"npm install -g @getpaseo/cli\npaseo daemon start"}</Code><External href="https://paseo.sh/docs">Paseo getting started</External></div></li>
         <li><span>2</span><div><h3>Install and sign in to at least one agent CLI</h3><p>Paseo supervises provider CLIs already installed and authenticated on this machine; it does not replace their subscriptions.</p><a href="#providers">Choose your providers <ArrowRight/></a></div></li>
