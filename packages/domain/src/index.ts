@@ -253,7 +253,7 @@ export const defaultAppSettings: AppSettings = {
   githubClientId: "",
   githubLogin: null,
   githubConnected: false,
-  branchPrefix: "lens",
+  branchPrefix: "agm",
   defaultBaseBranch: "main",
   theme: "system",
   density: "balanced",

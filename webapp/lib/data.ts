@@ -74,6 +74,7 @@ export async function loadSnapshot(): Promise<AppSnapshot> {
   const stored = (settingsResult.data as Row | null)?.payload as Partial<AppSettings> | undefined;
   const settings: AppSettings = {
     ...defaultAppSettings, ...stored,
+    branchPrefix: !stored?.branchPrefix || stored.branchPrefix === "lens" ? defaultAppSettings.branchPrefix : stored.branchPrefix,
     globalRoles: { ...defaultAppSettings.globalRoles, ...(stored?.globalRoles ?? {}) },
     promptTemplates: { ...defaultAppSettings.promptTemplates, ...(stored?.promptTemplates ?? {}) },
     cloud: defaultAppSettings.cloud,
