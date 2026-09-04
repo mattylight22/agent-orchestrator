@@ -11,13 +11,13 @@ const repositories = [
 ] as any[];
 
 describe("selectRecentRepositories", () => {
-  it("shows only repositories with workstreams, newest activity first", () => {
+  it("shows workstream repositories first, then fills remaining slots from pull-request activity", () => {
     const workstreams = [
       { repositoryId: "a", updatedAt: "2026-01-01T00:00:00Z" },
       { repositoryId: "b", updatedAt: "2026-02-01T00:00:00Z" },
       { repositoryId: "a", updatedAt: "2026-03-01T00:00:00Z" },
     ] as any[];
-    expect(selectRecentRepositories(repositories, workstreams, ["c", "d"]).map((repository) => repository.id)).toEqual(["a", "b"]);
+    expect(selectRecentRepositories(repositories, workstreams, ["b", "c", "d", "e", "f"]).map((repository) => repository.id)).toEqual(["a", "b", "c", "d", "e"]);
   });
 
   it("falls back to the five repositories from recent pull-request activity", () => {
@@ -26,5 +26,10 @@ describe("selectRecentRepositories", () => {
 
   it("filters within the ranked recent list", () => {
     expect(selectRecentRepositories(repositories, [], ["f", "e", "d", "c"], "char").map((repository) => repository.id)).toEqual(["c"]);
+  });
+
+  it("does not duplicate a workstream repository found in pull-request activity", () => {
+    const workstreams = [{ repositoryId: "a", updatedAt: "2026-03-01T00:00:00Z" }] as any[];
+    expect(selectRecentRepositories(repositories, workstreams, ["a", "b", "c", "d", "e", "f"]).map((repository) => repository.id)).toEqual(["a", "b", "c", "d", "e"]);
   });
 });

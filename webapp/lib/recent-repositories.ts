@@ -16,9 +16,11 @@ export function selectRecentRepositories(
   const workstreamRepositories = [...latestWorkstreamActivity.entries()]
     .sort((left, right) => right[1] - left[1])
     .flatMap(([id]) => repositoryById.get(id) ?? []);
-  const ranked = workstreamRepositories.length
-    ? workstreamRepositories
-    : pullRequestRepositoryIds.flatMap((id) => repositoryById.get(id) ?? []);
+  const included = new Set(workstreamRepositories.map((repository) => repository.id));
+  const pullRequestRepositories = pullRequestRepositoryIds
+    .flatMap((id) => repositoryById.get(id) ?? [])
+    .filter((repository) => !included.has(repository.id));
+  const ranked = [...workstreamRepositories, ...pullRequestRepositories].slice(0, limit);
   const normalizedQuery = query.trim().toLowerCase();
-  return ranked.filter((repository) => !normalizedQuery || repository.fullName.toLowerCase().includes(normalizedQuery)).slice(0, limit);
+  return ranked.filter((repository) => !normalizedQuery || repository.fullName.toLowerCase().includes(normalizedQuery));
 }

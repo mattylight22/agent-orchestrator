@@ -105,7 +105,9 @@ async function recentPullRequestRepositoryIds(octokit: Octokit, login: string, r
   ]);
   record(authored.data.items, "authored");
   record(merged.data.items, "merged");
-  return [...activity.entries()].sort((left, right) => right[1] - left[1]).slice(0, 5).map(([id]) => id);
+  // Keep enough candidates to fill five sidebar slots when workstream
+  // repositories overlap with the user's latest pull-request repositories.
+  return [...activity.entries()].sort((left, right) => right[1] - left[1]).slice(0, 20).map(([id]) => id);
 }
 
 export async function syncGithubRepositories(userId: string) {
