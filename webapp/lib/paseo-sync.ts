@@ -9,6 +9,11 @@ export interface PaseoSynchronizationResult {
   planChanged: boolean;
 }
 
+export interface PaseoAgentSnapshotInput {
+  entries: any[];
+  agent: any;
+}
+
 function titleFromPlan(body: string) {
   return body.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? "Implementation plan";
 }
@@ -60,25 +65,17 @@ async function saveCurrentPlan(input: {
   return true;
 }
 
-export async function synchronizePaseoAgent(userId: string, workstreamId: string, agentId: string, options: { updateWorkstreamState?: boolean } = {}): Promise<PaseoSynchronizationResult> {
+export async function persistPaseoAgentSnapshot(userId: string, workstreamId: string, agentId: string, sync: PaseoAgentSnapshotInput, options: { updateWorkstreamState?: boolean } = {}): Promise<PaseoSynchronizationResult> {
   const admin = createSupabaseAdminClient();
-  const [{ data: workstream, error }, { data: run }] = await Promise.all([
-    admin.from("workstreams").select("host_id").eq("user_id", userId).eq("id", workstreamId).single(),
-    admin.from("agent_runs").select("role").eq("user_id", userId).eq("paseo_agent_id", agentId).maybeSingle(),
-  ]);
-  if (error || !workstream) throw error ?? new Error("Workstream not found");
-  const sync = await withPaseoClient(userId, workstream.host_id, async (client) => {
-    const agent = client.agents.ref(agentId);
-    const page = await agent.timeline.refetch({ limit: 500, projection: "projected" });
-    return { page, agent: page.agent ?? agent.current() };
-  });
-  const entries = sync.page.entries as any[];
+  const { data: run, error: runError } = await admin.from("agent_runs").select("role").eq("user_id", userId).eq("workstream_id", workstreamId).eq("paseo_agent_id", agentId).maybeSingle();
+  if (runError || !run) throw runError ?? new Error("Agent run not found");
+  const entries = sync.entries;
   const messages = entries.flatMap((entry) => {
     const item = entry.item;
     if (!["assistant_message", "user_message", "reasoning", "error"].includes(item.type)) return [];
     const content = item.type === "error" ? item.message : item.text;
     if (!content) return [];
-    return [{ id: `${agentId}:${"messageId" in item ? item.messageId : `${sync.page.epoch ?? "timeline"}:${entry.seqStart}-${entry.seqEnd}:${item.type}`}`, user_id: userId, workstream_id: workstreamId, role: item.type === "assistant_message" ? "assistant" : item.type === "user_message" ? "user" : "system", kind: "message", content, agent_role: run?.role ?? null, source_updated_at: entry.timestamp, created_at: entry.timestamp }];
+    return [{ id: `${agentId}:${"messageId" in item ? item.messageId : `timeline:${entry.seqStart}-${entry.seqEnd}:${item.type}`}`, user_id: userId, workstream_id: workstreamId, role: item.type === "assistant_message" ? "assistant" : item.type === "user_message" ? "user" : "system", kind: "message", content, agent_role: run.role, source_updated_at: entry.timestamp, created_at: entry.timestamp }];
   });
   if (messages.length) {
     const { error: timelineError } = await admin.from("timeline_items").upsert(messages, { onConflict: "user_id,id" });
@@ -113,4 +110,16 @@ export async function synchronizePaseoAgent(userId: string, workstreamId: string
     await admin.from("workstreams").update({ agent_state: state, source_updated_at: sourceUpdatedAt }).eq("user_id", userId).eq("id", workstreamId);
   }
   return { terminal, attention, planChanged };
+}
+
+export async function synchronizePaseoAgent(userId: string, workstreamId: string, agentId: string, options: { updateWorkstreamState?: boolean } = {}): Promise<PaseoSynchronizationResult> {
+  const admin = createSupabaseAdminClient();
+  const { data: workstream, error } = await admin.from("workstreams").select("host_id").eq("user_id", userId).eq("id", workstreamId).single();
+  if (error || !workstream) throw error ?? new Error("Workstream not found");
+  const sync = await withPaseoClient(userId, workstream.host_id, async (client) => {
+    const agent = client.agents.ref(agentId);
+    const page = await agent.timeline.refetch({ limit: 500, projection: "projected" });
+    return { entries: page.entries as any[], agent: page.agent ?? agent.current() };
+  });
+  return persistPaseoAgentSnapshot(userId, workstreamId, agentId, sync, options);
 }

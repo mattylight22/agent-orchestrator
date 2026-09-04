@@ -2,6 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { AppSnapshot } from "@agent-lens/domain";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { fetchBrowserTailscaleAgents } from "@/lib/paseo-browser";
 
 interface SnapshotContextValue {
   snapshot: AppSnapshot;
@@ -38,7 +39,6 @@ export function SnapshotProvider({ initial, children }: { initial: AppSnapshot; 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshInFlight = useRef<Promise<void> | null>(null);
   const reconcileInFlight = useRef<Promise<void> | null>(null);
-  const workstreamIds = useRef(initial.workstreams.map((workstream) => workstream.id));
   const loadSnapshot = useCallback(async (showIndicator = false) => {
     if (refreshInFlight.current) return refreshInFlight.current;
     if (showIndicator) setRefreshing(true);
@@ -58,22 +58,48 @@ export function SnapshotProvider({ initial, children }: { initial: AppSnapshot; 
   }, []);
   const refresh = useCallback(() => loadSnapshot(true), [loadSnapshot]);
   const refreshInBackground = useCallback(() => { void loadSnapshot().catch(() => undefined); }, [loadSnapshot]);
+  const snapshotRef = useRef(snapshot);
   const reconcilePaseo = useCallback(() => {
     if (reconcileInFlight.current) return reconcileInFlight.current;
     const pending = (async () => {
-      const response = await fetch("/api/paseo/reconcile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workstreamIds: workstreamIds.current }),
-      });
-      if (response.ok) await loadSnapshot();
+      const current = snapshotRef.current;
+      const hostById = new Map(current.hosts.map((host) => [host.id, host]));
+      const directWorkstreams = current.workstreams.filter((workstream) => (hostById.get(workstream.hostId)?.transports ?? []).includes("tailscale"));
+      const directByHost = new Map<string, Array<{ workstreamId: string; agentId: string }>>();
+      for (const workstream of directWorkstreams) {
+        const seenRoles = new Set<string>();
+        for (const agent of [...workstream.agents].sort((left, right) => right.createdAt.localeCompare(left.createdAt))) {
+          if (!agent.paseoAgentId || seenRoles.has(agent.role)) continue;
+          seenRoles.add(agent.role);
+          const list = directByHost.get(workstream.hostId) ?? [];
+          list.push({ workstreamId: workstream.id, agentId: agent.paseoAgentId });
+          directByHost.set(workstream.hostId, list);
+        }
+      }
+      for (const [hostId, agents] of directByHost) {
+        const host = hostById.get(hostId);
+        if (!host || host.endpoint === "Paseo relay") continue;
+        try {
+          const snapshots = await fetchBrowserTailscaleAgents(host.endpoint, agents);
+          await fetch("/api/paseo/browser-reconcile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ agents: snapshots }) });
+        } catch { /* A disconnected tailnet must not block Relay or Supabase updates. */ }
+      }
+      const serverWorkstreamIds = current.workstreams.filter((workstream) => (hostById.get(workstream.hostId)?.transports ?? []).includes("relay")).map((workstream) => workstream.id);
+      if (serverWorkstreamIds.length) {
+        await fetch("/api/paseo/reconcile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workstreamIds: serverWorkstreamIds }),
+        });
+      }
+      await loadSnapshot();
     })().catch(() => undefined).finally(() => {
       if (reconcileInFlight.current === pending) reconcileInFlight.current = null;
     });
     reconcileInFlight.current = pending;
     return pending;
   }, [loadSnapshot]);
-  useEffect(() => { workstreamIds.current = snapshot.workstreams.map((workstream) => workstream.id); }, [snapshot.workstreams]);
+  useEffect(() => { snapshotRef.current = snapshot; }, [snapshot]);
   const scheduleBackgroundRefresh = useCallback((delay = 160) => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(refreshInBackground, delay);

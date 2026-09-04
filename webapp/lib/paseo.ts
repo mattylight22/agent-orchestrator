@@ -10,6 +10,7 @@ import { createSupabaseAdminClient } from "./supabase/admin";
 
 export interface StoredPaseoCapability { offer: ConnectionOffer }
 export interface StoredTailscaleConnection { endpoint: string }
+export interface PaseoProjectDiscovery { projectId: string; projectRootPath: string; remote: string; workspaceKind: string }
 
 export function parsePairingLink(link: string): ConnectionOffer {
   const offer = parseConnectionOfferFromUrl(link.trim());
@@ -106,8 +107,9 @@ export async function storePaseoPairing(userId: string, name: string, offer: Con
   return storePaseoConnection({ userId, name, daemonId: offer.serverId, endpoint: "", catalog, transport: "relay", credential: { offer } });
 }
 
-export async function storePaseoTailscaleConnection(userId: string, name: string, value: Awaited<ReturnType<typeof validateTailscaleConnection>>) {
-  return storePaseoConnection({ userId, name, daemonId: value.daemonId, daemonVersion: value.daemonVersion, endpoint: value.endpoint, catalog: value.catalog, transport: "tailscale", credential: { endpoint: value.endpoint } });
+export async function storePaseoTailscaleConnection(userId: string, name: string, value: { endpoint: string; daemonId: string; daemonVersion: string | null; catalog: ProviderModel[] }) {
+  const endpoint = normalizeTailscaleEndpoint(value.endpoint);
+  return storePaseoConnection({ userId, name, daemonId: value.daemonId, daemonVersion: value.daemonVersion, endpoint, catalog: value.catalog, transport: "tailscale", credential: { endpoint } });
 }
 
 async function loadConnections(userId: string, hostId: string): Promise<Array<{ transport: PaseoTransport; config: Pick<PaseoClientConfig, "url" | "e2ee"> }>> {
@@ -159,11 +161,52 @@ export function normalizeGithubRemote(remote: string | null | undefined): string
   return match ? `${match[1]}/${match[2]}`.toLowerCase() : null;
 }
 
-export async function refreshHostMappings(userId: string, hostId: string) {
+export async function storeHostMappings(userId: string, hostId: string, matches: PaseoProjectDiscovery[]) {
   const admin = createSupabaseAdminClient();
   const { data: repositories, error } = await admin.from("repositories").select("id,full_name").eq("user_id", userId).is("deleted_at", null);
   if (error) throw error;
   const repositoryByName = new Map((repositories ?? []).map((repo) => [repo.full_name.toLowerCase(), repo]));
+  const normalizedMatches = matches.flatMap((match) => {
+    const remote = normalizeGithubRemote(match.remote);
+    return remote ? [{ ...match, remote }] : [];
+  });
+  const { data: existingMappings, error: existingMappingsError } = await admin
+    .from("host_repository_mappings")
+    .select("repository_id,project_id")
+    .eq("user_id", userId)
+    .eq("host_id", hostId);
+  if (existingMappingsError) throw existingMappingsError;
+  const existingByRepository = new Map((existingMappings ?? []).map((mapping) => [mapping.repository_id, mapping.project_id]));
+  type ProjectMatch = (typeof normalizedMatches)[number];
+  const candidatesByRepository = new Map<string, { repository: { id: string; full_name: string }; matches: ProjectMatch[] }>();
+  for (const match of normalizedMatches) {
+    const repository = repositoryByName.get(match.remote);
+    if (!repository) continue;
+    const group: { repository: { id: string; full_name: string }; matches: ProjectMatch[] } = candidatesByRepository.get(repository.id) ?? { repository, matches: [] };
+    group.matches.push(match);
+    candidatesByRepository.set(repository.id, group);
+  }
+
+  const rows: Array<Record<string, unknown>> = [];
+  const ambiguous: string[] = [];
+  for (const { repository, matches: candidates } of candidatesByRepository.values()) {
+    const existingProjectId = existingByRepository.get(repository.id);
+    const checkoutCandidates = candidates.filter((candidate) => candidate.workspaceKind !== "worktree");
+    const selected = candidates.find((candidate) => candidate.projectId === existingProjectId)
+      ?? (checkoutCandidates.length === 1 ? checkoutCandidates[0] : undefined)
+      ?? (candidates.length === 1 ? candidates[0] : undefined);
+    if (!selected) { ambiguous.push(repository.full_name); continue; }
+    rows.push({ id: `${hostId}:${repository.id}`, user_id: userId, host_id: hostId, repository_id: repository.id, project_id: selected.projectId, project_root_path: selected.projectRootPath, remote_url: selected.remote, validated_at: new Date().toISOString() });
+  }
+  if (rows.length) {
+    const { error: mappingError } = await admin.from("host_repository_mappings").upsert(rows, { onConflict: "user_id,host_id,repository_id" });
+    if (mappingError) throw mappingError;
+  }
+  if (ambiguous.length) throw new Error(`Multiple Paseo projects match ${ambiguous.join(", ")}. Select an existing project mapping before provisioning.`);
+  return rows;
+}
+
+export async function refreshHostMappings(userId: string, hostId: string) {
   const matches = await withPaseoDaemon(userId, hostId, async (client) => {
     const { projects } = await client.listProjects();
     const known = new Map<string, { projectId: string; projectRootPath: string; remote: string; workspaceKind: string }>();
@@ -180,56 +223,9 @@ export async function refreshHostMappings(userId: string, hostId: string) {
       }
       cursor = page.pageInfo.nextCursor ?? undefined;
     } while (cursor);
-    return [...known.values()];
+    return [...known.values()] as PaseoProjectDiscovery[];
   });
-  const { data: existingMappings, error: existingMappingsError } = await admin
-    .from("host_repository_mappings")
-    .select("repository_id,project_id")
-    .eq("user_id", userId)
-    .eq("host_id", hostId);
-  if (existingMappingsError) throw existingMappingsError;
-  const existingByRepository = new Map((existingMappings ?? []).map((mapping) => [mapping.repository_id, mapping.project_id]));
-  type ProjectMatch = (typeof matches)[number];
-  const candidatesByRepository = new Map<string, { repository: { id: string; full_name: string }; matches: ProjectMatch[] }>();
-  for (const match of matches) {
-    const repository = repositoryByName.get(match.remote);
-    if (!repository) continue;
-    const group: { repository: { id: string; full_name: string }; matches: ProjectMatch[] } = candidatesByRepository.get(repository.id) ?? { repository, matches: [] };
-    group.matches.push(match);
-    candidatesByRepository.set(repository.id, group);
-  }
-
-  const rows: Array<Record<string, unknown>> = [];
-  const ambiguous: string[] = [];
-  for (const { repository, matches: candidates } of candidatesByRepository.values()) {
-    const existingProjectId = existingByRepository.get(repository.id);
-    const checkoutCandidates = candidates.filter((candidate) => candidate.workspaceKind !== "worktree");
-    const selected = candidates.find((candidate) => candidate.projectId === existingProjectId)
-      ?? (checkoutCandidates.length === 1 ? checkoutCandidates[0] : undefined)
-      ?? (candidates.length === 1 ? candidates[0] : undefined);
-    if (!selected) {
-      ambiguous.push(repository.full_name);
-      continue;
-    }
-    rows.push({
-      id: `${hostId}:${repository.id}`,
-      user_id: userId,
-      host_id: hostId,
-      repository_id: repository.id,
-      project_id: selected.projectId,
-      project_root_path: selected.projectRootPath,
-      remote_url: selected.remote,
-      validated_at: new Date().toISOString(),
-    });
-  }
-  if (rows.length) {
-    const { error: mappingError } = await admin.from("host_repository_mappings").upsert(rows, { onConflict: "user_id,host_id,repository_id" });
-    if (mappingError) throw mappingError;
-  }
-  if (ambiguous.length) {
-    throw new Error(`Multiple Paseo projects match ${ambiguous.join(", ")}. Select an existing project mapping before provisioning.`);
-  }
-  return rows;
+  return storeHostMappings(userId, hostId, matches);
 }
 
 export async function ensureHostRepositoryMapping(userId: string, hostId: string, repositoryId: string, fullName: string) {
