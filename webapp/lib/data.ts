@@ -99,5 +99,8 @@ export async function loadSnapshot(): Promise<AppSnapshot> {
     hosts, repositories, workstreams, plans,
     planComments: ((commentsResult.data ?? []) as Row[]).map((row) => ({ id: row.id, planId: row.plan_id, quote: row.quote, comment: row.comment, startOffset: row.start_offset, endOffset: row.end_offset, createdAt: row.created_at, updatedAt: row.updated_at })),
     providerCatalogs: Object.fromEntries(hostRows.map((row) => [row.id, row.provider_catalog ?? []])),
+    recentRepositoryIds: Array.isArray((stored as Record<string, unknown> | undefined)?.recentGithubRepositoryIds)
+      ? ((stored as Record<string, unknown>).recentGithubRepositoryIds as unknown[]).filter((id): id is string => typeof id === "string")
+      : undefined,
   };
 }

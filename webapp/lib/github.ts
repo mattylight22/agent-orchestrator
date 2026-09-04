@@ -82,6 +82,32 @@ export async function storeGithubConnection(userId: string, credential: GithubCr
   if (error) throw error;
 }
 
+function repositoryNameFromApiUrl(value: string): string | null {
+  const match = value.match(/\/repos\/([^/]+\/[^/]+)$/);
+  return match ? decodeURIComponent(match[1]).toLowerCase() : null;
+}
+
+async function recentPullRequestRepositoryIds(octokit: Octokit, login: string, repositories: Map<string, Record<string, unknown>>) {
+  const repositoryIdByName = new Map([...repositories.entries()].map(([id, repository]) => [String(repository.full_name).toLowerCase(), id]));
+  const activity = new Map<string, number>();
+  const record = (items: Array<{ repository_url: string; created_at: string; closed_at?: string | null }>, kind: "authored" | "merged") => {
+    for (const item of items) {
+      const fullName = repositoryNameFromApiUrl(item.repository_url);
+      const repositoryId = fullName ? repositoryIdByName.get(fullName) : undefined;
+      if (!repositoryId) continue;
+      const timestamp = new Date(kind === "merged" ? item.closed_at ?? item.created_at : item.created_at).getTime();
+      activity.set(repositoryId, Math.max(activity.get(repositoryId) ?? 0, Number.isFinite(timestamp) ? timestamp : 0));
+    }
+  };
+  const [authored, merged] = await Promise.all([
+    octokit.rest.search.issuesAndPullRequests({ q: `is:pr author:${login}`, sort: "created", order: "desc", per_page: 50 }),
+    octokit.rest.search.issuesAndPullRequests({ q: `is:pr is:merged merged-by:${login}`, sort: "updated", order: "desc", per_page: 50 }),
+  ]);
+  record(authored.data.items, "authored");
+  record(merged.data.items, "merged");
+  return [...activity.entries()].sort((left, right) => right[1] - left[1]).slice(0, 5).map(([id]) => id);
+}
+
 export async function syncGithubRepositories(userId: string) {
   const token = await getGithubAccessToken(userId);
   const octokit = new Octokit({ auth: token, userAgent: "agent-lens-web/0.1" });
@@ -114,5 +140,19 @@ export async function syncGithubRepositories(userId: string) {
   if (active.length) query.not("id", "in", `(${active.map((id) => `\"${id}\"`).join(",")})`);
   const { error } = await query;
   if (error) throw error;
+  try {
+    const { data: viewer } = await octokit.rest.users.getAuthenticated();
+    const recentGithubRepositoryIds = await recentPullRequestRepositoryIds(octokit, viewer.login, rows);
+    const { data: settings, error: settingsReadError } = await admin.from("user_settings").select("payload").eq("user_id", userId).maybeSingle();
+    if (settingsReadError) throw settingsReadError;
+    const { error: settingsWriteError } = await admin.from("user_settings").upsert({
+      user_id: userId,
+      payload: { ...(settings?.payload ?? {}), recentGithubRepositoryIds },
+      source_updated_at: new Date().toISOString(),
+    });
+    if (settingsWriteError) throw settingsWriteError;
+  } catch {
+    // Repository discovery should still succeed if GitHub search is unavailable or rate-limited.
+  }
   return [...rows.values()];
 }

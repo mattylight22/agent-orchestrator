@@ -1,20 +1,27 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Bot, ChevronsLeft, CirclePlus, FileText, LayoutDashboard, Menu, Search, Settings, X } from "lucide-react";
 import appIcon from "../../resources/icon.png";
 import { useAgentLens } from "./snapshot-provider";
 import { NewWorkstreamDialog } from "./new-workstream-dialog";
+import { selectRecentRepositories } from "@/lib/recent-repositories";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { snapshot, refreshing } = useAgentLens();
+  const { snapshot, refreshing, request } = useAgentLens();
   const [mobile, setMobile] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
   const [repoQuery, setRepoQuery] = useState("");
-  const recent = useMemo(() => snapshot.repositories.filter((repo) => repo.fullName.toLowerCase().includes(repoQuery.toLowerCase())).slice(0, 7), [snapshot.repositories, repoQuery]);
+  const requestedPullRequestActivity = useRef(false);
+  const recent = useMemo(() => selectRecentRepositories(snapshot.repositories, snapshot.workstreams, snapshot.recentRepositoryIds, repoQuery), [snapshot.repositories, snapshot.workstreams, snapshot.recentRepositoryIds, repoQuery]);
+  useEffect(() => {
+    if (requestedPullRequestActivity.current || snapshot.workstreams.length || snapshot.recentRepositoryIds !== undefined || !snapshot.settings.githubConnected) return;
+    requestedPullRequestActivity.current = true;
+    void request("/api/github/repositories", { method: "POST" }).catch(() => undefined);
+  }, [request, snapshot.recentRepositoryIds, snapshot.settings.githubConnected, snapshot.workstreams.length]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "n") { event.preventDefault(); setNewOpen(true); }

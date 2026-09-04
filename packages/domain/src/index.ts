@@ -245,6 +245,8 @@ export interface AppSnapshot {
   plans: Plan[];
   planComments: PlanComment[];
   providerCatalogs: Record<string, ProviderModel[]>;
+  /** Repositories from the signed-in user's latest authored or merged pull requests. */
+  recentRepositoryIds?: string[];
 }
 
 export const defaultAppSettings: AppSettings = {
