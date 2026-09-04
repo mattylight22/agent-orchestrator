@@ -28,7 +28,7 @@
     }
   },
   "scripts": {
-    "postinstall": "electron-rebuild -f -w better-sqlite3",
+    "postinstall": "node scripts/postinstall.mjs",
     "dev": "node scripts/electron-vite-dev.mjs",
     "dev:demo": "AGENT_LENS_DEMO=1 node scripts/electron-vite-dev.mjs",
     "dev:web": "npm run dev --workspace=webapp",
