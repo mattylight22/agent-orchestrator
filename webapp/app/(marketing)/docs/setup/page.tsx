@@ -48,7 +48,7 @@ export default function SetupPage() {
       <ol className="setup-steps">
         <li><span>1</span><div><h3>Install Paseo</h3><p>Install Node.js 22 or newer, then install the current headless Paseo CLI.</p><Code>{"npm install -g @getpaseo/cli\npaseo daemon start"}</Code><External href="https://paseo.sh/docs">Paseo Getting Started</External></div></li>
         <li><span>2</span><div><h3>Install and Sign In to at Least One Agent CLI</h3><p>Paseo supervises provider CLIs already installed and authenticated on this machine; it does not replace their subscriptions.</p><a href="#providers">Choose Your Providers <ArrowRight/></a></div></li>
-        <li><span>3</span><div><h3>Choose a Connection</h3><p>Choose Tailscale Direct to keep browser-to-instance traffic on your private tailnet. Choose Relay when you want access from devices that are not joined to that tailnet. You may enable both.</p><div className="setup-choice-links"><a href="#tailscale"><Network/>Tailscale Direct</a><a href="#relay"><Cloud/>Relay</a></div></div></li>
+        <li><span>3</span><div><h3>Choose a Connection</h3><p>Select one connection method during setup. Tailscale Direct uses your private tailnet. Paseo Relay creates an end-to-end encrypted connection using outbound internet access.</p><div className="setup-choice-links"><a href="#tailscale"><Network/>Tailscale Direct</a><a href="#relay"><Cloud/>Paseo Relay · Easiest</a></div></div></li>
       </ol>
     </section>
 
@@ -63,7 +63,7 @@ export default function SetupPage() {
     </section>
 
     <section className="setup-section" id="relay">
-      <div className="setup-heading"><span>04 · Encrypted Relay</span><h2>Connect Through Paseo Relay.</h2><p>Relay lets you reach the Agent Instance from devices that are not joined to its tailnet. The instance needs only outbound internet access—no public IP, inbound security-group rule, or port forwarding—and Paseo encrypts its traffic end to end.</p></div>
+      <div className="setup-heading"><span>04 · Encrypted Relay · Easiest</span><h2>Connect Through Paseo Relay.</h2><p>Paseo Relay creates an end-to-end encrypted connection to your Agent Instance. The instance needs only outbound internet access—no public IP, inbound security-group rule, or port forwarding.</p></div>
       <ol className="setup-compact-steps"><li><span>1</span><div><h3>Create a Pairing Offer</h3><Code>{"paseo daemon pair --relay"}</Code></div></li><li><span>2</span><div><h3>Copy the Complete Link</h3><p>Keep the <code>#offer=…</code> fragment intact. The hostname before it can be a Paseo or Tailscale URL; the encrypted offer contains the relay endpoint used by Agent God Mode.</p></div></li><li><span>3</span><div><h3>Pair Agent God Mode</h3><p>Open <strong>App → Settings → Agent Instances → Add Instance → Paseo Relay</strong>, paste the link, then connect and verify.</p></div></li></ol>
       <External href="https://paseo.sh/docs/connectivity#paseo-relay">Paseo Relay Details</External>
     </section>
