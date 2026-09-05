@@ -135,7 +135,7 @@ export function DeploymentProgress({ deployment }: { deployment?: AwsPaseoDeploy
   const failedIndex = deployment?.state !== "failed" ? -1 : /pair|Paseo/i.test(failureText) ? 2 : /SSM|Session Manager|instance/i.test(failureText) ? 1 : 0;
   return <div className="deployment-progress" role="status" aria-live="polite">{states.map((state, itemIndex) => {
     const className = failedIndex >= 0 ? itemIndex < failedIndex ? "complete" : itemIndex === failedIndex ? "failed" : "" : itemIndex < index || deployment?.state === "ready" ? "complete" : itemIndex === index || (!deployment && itemIndex === 0) ? "active" : "";
-    return <div className={className} key={state}><span>{className === "complete" ? <Check/> : className === "failed" ? <X/> : itemIndex + 1}</span><strong>{state === "creating" ? "Create Stack" : state === "waiting-for-ssm" ? "Start Instance" : state === "pairing" ? "Pair Relay" : "Ready"}</strong></div>;
+    return <div className={className} key={state}><span>{className === "complete" ? <Check/> : className === "failed" ? <X/> : itemIndex + 1}</span><strong>{state === "creating" ? "Create Stack" : state === "waiting-for-ssm" ? "Prepare Instance" : state === "pairing" ? "Pair Relay" : "Ready"}</strong></div>;
   })}{deployment?.failureDetail && <div className="banner error">{deployment.failureDetail}</div>}</div>;
 }
 

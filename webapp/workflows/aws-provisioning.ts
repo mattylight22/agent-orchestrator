@@ -90,6 +90,53 @@ async function isSsmReady(userId: string, deploymentId: string) {
   return result.InstanceInformationList?.some((item) => item.InstanceId === deployment.instance_id && item.PingStatus === "Online") ?? false;
 }
 
+function commandFailureOutput(result: { StandardErrorContent?: string; StandardOutputContent?: string }) {
+  return `${result.StandardErrorContent ?? ""}\n${result.StandardOutputContent ?? ""}`
+    .replace(/\x1b\[[0-9;]*m/g, "")
+    .replace(/#offer=[^\s'\"]+/g, "#offer=[redacted]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 700);
+}
+
+function invocationPending(error: unknown) {
+  return error instanceof Error && error.name === "InvocationDoesNotExist";
+}
+
+async function startBootstrapWaitCommand(userId: string, deploymentId: string) {
+  "use step";
+  const deployment = await loadDeployment(userId, deploymentId);
+  const { ssm } = await awsClients(userId, deployment.aws_account_id, deployment.region, "bootstrap-start");
+  const result = await ssm.send(new SendCommandCommand({
+    DocumentName: "AWS-RunShellScript",
+    InstanceIds: [deployment.instance_id],
+    Parameters: { commands: [
+      "set -eu",
+      "cloud-init status --wait",
+      "command -v paseo >/dev/null 2>&1",
+      "systemctl is-active --quiet paseo.service",
+    ] },
+    TimeoutSeconds: 900,
+    Comment: `Wait for Agent God Mode bootstrap ${String(deployment.id).slice(0, 8)}`,
+  }));
+  if (!result.Command?.CommandId) throw new Error("AWS did not start the Agent Instance readiness check");
+  return result.Command.CommandId;
+}
+
+async function bootstrapCommandState(userId: string, deploymentId: string, commandId: string) {
+  "use step";
+  const deployment = await loadDeployment(userId, deploymentId);
+  const { ssm } = await awsClients(userId, deployment.aws_account_id, deployment.region, "bootstrap-status");
+  try {
+    const result = await ssm.send(new GetCommandInvocationCommand({ CommandId: commandId, InstanceId: deployment.instance_id }));
+    if (["Failed", "Cancelled", "TimedOut", "Cancelling"].includes(result.Status ?? "")) {
+      const output = commandFailureOutput(result);
+      throw new Error(output ? `Agent Instance setup failed: ${output}` : `Agent Instance readiness check ended with ${result.Status}`);
+    }
+    return result.Status === "Success";
+  } catch (error) { if (invocationPending(error)) return false; throw error; }
+}
+
 async function startPairCommand(userId: string, deploymentId: string) {
   "use step";
   const deployment = await loadDeployment(userId, deploymentId);
@@ -117,17 +164,14 @@ async function pairCommandState(userId: string, deploymentId: string) {
   "use step";
   const deployment = await loadDeployment(userId, deploymentId);
   const { ssm } = await awsClients(userId, deployment.aws_account_id, deployment.region, "pair-status");
-  const result = await ssm.send(new GetCommandInvocationCommand({ CommandId: deployment.pair_command_id, InstanceId: deployment.instance_id }));
-  if (["Failed", "Cancelled", "TimedOut", "Cancelling"].includes(result.Status ?? "")) {
-    const output = `${result.StandardErrorContent ?? ""}\n${result.StandardOutputContent ?? ""}`
-      .replace(/\x1b\[[0-9;]*m/g, "")
-      .replace(/#offer=[^\s'\"]+/g, "#offer=[redacted]")
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 700);
-    throw new Error(output ? `Paseo pairing failed on the Agent Instance: ${output}` : `Paseo pairing command ended with ${result.Status}`);
-  }
-  return result.Status === "Success";
+  try {
+    const result = await ssm.send(new GetCommandInvocationCommand({ CommandId: deployment.pair_command_id, InstanceId: deployment.instance_id }));
+    if (["Failed", "Cancelled", "TimedOut", "Cancelling"].includes(result.Status ?? "")) {
+      const output = commandFailureOutput(result);
+      throw new Error(output ? `Paseo pairing failed on the Agent Instance: ${output}` : `Paseo pairing command ended with ${result.Status}`);
+    }
+    return result.Status === "Success";
+  } catch (error) { if (invocationPending(error)) return false; throw error; }
 }
 
 async function completePairing(userId: string, deploymentId: string) {
@@ -173,6 +217,14 @@ export async function provisionAwsPaseoWorkflow(userId: string, deploymentId: st
       await sleep("10s");
     }
     if (!ready) throw new Error("Timed out waiting for the EC2 instance to register with Session Manager");
+    const bootstrapCommandId = await startBootstrapWaitCommand(userId, deploymentId);
+    let bootstrapReady = false;
+    for (let attempt = 0; attempt < 300; attempt += 1) {
+      bootstrapReady = await bootstrapCommandState(userId, deploymentId, bootstrapCommandId);
+      if (bootstrapReady) break;
+      await sleep("3s");
+    }
+    if (!bootstrapReady) throw new Error("Timed out waiting for the Agent Instance setup to finish");
     await setDeploymentState(userId, deploymentId, "pairing");
     await startPairCommand(userId, deploymentId);
     let paired = false;
