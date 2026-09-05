@@ -28,5 +28,13 @@ describe("AWS provisioning templates", () => {
     expect(template).not.toContain("AWS::IAM::InstanceProfile");
     expect(template).toContain("HttpTokens: required");
     expect(template).toContain("Encrypted: true");
+    expect(template).toContain("AWS-StartInteractiveCommand");
+    expect(template).toContain('sudo -iu ubuntu');
+  });
+
+  it("opens the standalone template session as the ubuntu agent user", () => {
+    const template = read("agent-god-mode-paseo-host.yaml");
+    expect(template).toContain("AWS-StartInteractiveCommand");
+    expect(template).toContain('sudo -iu ubuntu');
   });
 });

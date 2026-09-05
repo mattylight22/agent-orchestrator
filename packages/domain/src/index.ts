@@ -65,6 +65,24 @@ export interface AwsPaseoDeployment {
   updatedAt: string;
 }
 
+export interface AwsOrphanStack {
+  awsAccountId: string;
+  awsAccountName: string;
+  awsAccountNumber: string | null;
+  region: AwsRegion;
+  stackName: string;
+  stackId: string;
+  stackStatus: string;
+  createdAt: string | null;
+  instanceId: string | null;
+}
+
+export interface AwsOrphanScan {
+  orphans: AwsOrphanStack[];
+  warnings: Array<{ awsAccountId: string; awsAccountName: string; region: AwsRegion; message: string }>;
+  scannedAt: string;
+}
+
 export interface PaseoHost {
   id: string;
   name: string;

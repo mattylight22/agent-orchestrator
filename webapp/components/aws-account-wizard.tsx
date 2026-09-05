@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Cloud, Copy, ExternalLink, LoaderCircle, Network, Server, ShieldCheck, Terminal, X } from "lucide-react";
-import { awsInstanceTypes, type AwsAccountConnection, type AwsPaseoDeployment, type AwsRegion } from "@agent-lens/domain";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, Cloud, Copy, ExternalLink, LoaderCircle, Network, RefreshCw, Server, ShieldCheck, Terminal, X } from "lucide-react";
+import { awsInstanceTypes, type AwsAccountConnection, type AwsOrphanScan, type AwsOrphanStack, type AwsPaseoDeployment, type AwsRegion } from "@agent-lens/domain";
 import { AWS_DEFAULT_DEPLOYMENT_REGION, AWS_DEPLOYMENT_REGIONS } from "@/lib/aws-deployment";
 import { useAgentLens } from "./snapshot-provider";
 
@@ -124,7 +124,7 @@ export function AwsAccountWizard({ onClose }: { onClose(): void }) {
 
     {stage === "deploy" && <form className="wizard-panel aws-deploy-form" onSubmit={deploy}><div><h3>Configure the Agent Instance</h3><p>Only subnets with a usable NAT Gateway or internet-gateway route are available.</p></div><div className="field-grid"><label>Account<select value={connectionId} onChange={(event) => setConnectionId(event.target.value)}>{accounts.filter((item) => item.state === "connected").map((item) => <option value={item.id} key={item.id}>{item.name} · {item.accountId}</option>)}</select></label><label>Region<select value={region} onChange={(event) => setRegion(event.target.value as AwsRegion)}>{AWS_DEPLOYMENT_REGIONS.map((item) => <option value={item.id} key={item.id}>{item.label} · {item.id}</option>)}</select></label><label>VPC<select value={vpcId} onChange={(event) => setVpcId(event.target.value)} disabled={busy === "networks"}><option value="">Select VPC…</option>{networks?.vpcs.filter((vpc) => networks.subnets.some((subnet) => subnet.vpcId === vpc.id)).map((vpc) => <option value={vpc.id} key={vpc.id}>{vpc.name} · {vpc.id}{vpc.isDefault ? " · default" : ""}</option>)}</select></label><label>Subnet<select value={subnetId} onChange={(event) => setSubnetId(event.target.value)} disabled={!vpcId || busy === "networks"}><option value="">Select Subnet…</option>{visibleSubnets.map((subnet) => <option value={subnet.id} key={subnet.id}>{subnet.name} · {subnet.availabilityZone} · {subnet.routeType === "nat" ? "private/NAT" : "public route"}</option>)}</select></label><label>Instance Type<select value={instanceType} onChange={(event) => setInstanceType(event.target.value as typeof instanceType)}>{awsInstanceTypes.map((item) => <option key={item}>{item}</option>)}</select></label><label>Encrypted Disk (GB)<input type="number" min={40} max={2048} value={volumeSize} onChange={(event) => setVolumeSize(Number(event.target.value))}/></label></div><label>Instance Name<input value={deploymentName} onChange={(event) => setDeploymentName(event.target.value)} required/></label>{selectedSubnet && <div className="aws-network-result"><Network/><div><strong>{selectedSubnet.routeType === "nat" ? "Private Subnet Through NAT Gateway" : "Internet-Gateway Subnet With Public IP"}</strong><small>{selectedSubnet.routeType === "nat" ? "The instance receives no public IP." : "The instance receives a public IP for outbound traffic, but its security group has no inbound rules."}</small></div></div>}<div className="aws-inline-estimate"><span>Estimated Cost in {estimate.label}</span><strong>≈ {estimate.total}/month</strong><small>This infrastructure cost is billed directly to your AWS account. The estimate includes a t3.medium and 100 GB gp3; larger compute or disk selections cost more.</small></div><div className="banner warning">Deleting this deployment later terminates the instance and permanently destroys its encrypted EBS volume.</div><footer><button type="button" className="button" onClick={() => setStage("accounts")}><ArrowLeft/>Back</button><button className="primary" disabled={!selectedSubnet || busy === "deploy"}>{busy === "deploy" ? <LoaderCircle className="spinning"/> : null}Deploy and Pair<ArrowRight/></button></footer></form>}
 
-    {stage === "progress" && <div className="wizard-panel aws-progress"><div><h3>{deployment?.state === "ready" ? "Agent Instance Ready" : deployment?.state === "failed" ? "Provisioning Needs Attention" : "Provisioning in AWS"}</h3><p>{deployment?.state === "ready" ? "The Agent Instance is online and paired through Paseo Relay." : deployment?.state === "failed" ? "The existing stack and instance are preserved. Retry resumes provisioning without creating another instance." : "You can close this window. Provisioning continues and its status stays available in Settings."}</p></div><DeploymentProgress deployment={deployment}/>{deployment?.state === "ready" && deployment.instanceId && <div className="aws-ready-actions"><a className="button" href={sessionUrl(deployment)} target="_blank" rel="noreferrer"><Terminal/>Open Session Manager<ExternalLink/></a><div className="setup-code compact"><code>{"sudo -iu ubuntu\nclaude auth login\ncodex login --device-auth\ncursor-agent login\ngh auth login --web"}</code></div></div>}<footer>{deployment?.state === "failed" && <button className="primary" disabled={busy === "retry"} onClick={() => void retryDeployment()}>{busy === "retry" ? <LoaderCircle className="spinning"/> : null}Retry From Failed Step</button>}<button className={deployment?.state === "failed" ? "button" : "primary"} onClick={onClose}>{deployment?.state === "ready" ? "Done" : "Close"}</button></footer></div>}
+    {stage === "progress" && <div className="wizard-panel aws-progress"><div><h3>{deployment?.state === "ready" ? "Agent Instance Ready" : deployment?.state === "failed" ? "Provisioning Needs Attention" : "Provisioning in AWS"}</h3><p>{deployment?.state === "ready" ? "The Agent Instance is online and paired through Paseo Relay." : deployment?.state === "failed" ? "The existing stack and instance are preserved. Retry resumes provisioning without creating another instance." : "You can close this window. Provisioning continues and its status stays available in Settings."}</p></div><DeploymentProgress deployment={deployment}/>{deployment?.state === "ready" && deployment.instanceId && <div className="aws-ready-actions"><div className="aws-agent-user-notice"><strong>Open as the Agent User</strong><p>Copy the command below to start the session directly as <code>ubuntu</code>. This keeps Paseo and provider credentials in the same home used by the managed daemon.</p></div><CommandCopyBox title="Start an Ubuntu Session From Your AWS CLI" value={ubuntuSessionCommand(deployment)}/><CommandCopyBox title="Authenticate Providers" value={"claude auth login\ncodex login --device-auth\ncursor-agent login\ngh auth login --web"}/><a className="button" href={sessionUrl(deployment)} target="_blank" rel="noreferrer"><Terminal/>Open Browser Session Instead<ExternalLink/></a></div>}<footer>{deployment?.state === "failed" && <button className="primary" disabled={busy === "retry"} onClick={() => void retryDeployment()}>{busy === "retry" ? <LoaderCircle className="spinning"/> : null}Retry From Failed Step</button>}<button className={deployment?.state === "failed" ? "button" : "primary"} onClick={onClose}>{deployment?.state === "ready" ? "Done" : "Close"}</button></footer></div>}
   </section></div>;
 }
 
@@ -144,8 +144,26 @@ function JsonCopyBox({ title, value }: { title: string; value: string }) {
   return <div className="json-copy-box"><header><strong>{title}</strong><button type="button" onClick={() => void navigator.clipboard.writeText(value).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 1500); })}>{copied ? <Check/> : <Copy/>}{copied ? "Copied" : "Copy JSON"}</button></header><pre><code>{value}</code></pre></div>;
 }
 
+function CommandCopyBox({ title, value }: { title: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+  return <div className="command-copy-box"><header><strong>{title}</strong><button type="button" onClick={() => void navigator.clipboard.writeText(value).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 1500); })}>{copied ? <Check/> : <Copy/>}{copied ? "Copied" : "Copy Command"}</button></header><pre><code>{value}</code></pre></div>;
+}
+
+function CopyUbuntuSessionButton({ deployment }: { deployment: AwsPaseoDeployment }) {
+  const [copied, setCopied] = useState(false);
+  return <button className="button" type="button" onClick={() => void navigator.clipboard.writeText(ubuntuSessionCommand(deployment)).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 1500); })}>{copied ? <Check/> : <Terminal/>}{copied ? "Ubuntu Session Copied" : "Copy Ubuntu Session"}</button>;
+}
+
 export function sessionUrl(deployment: AwsPaseoDeployment) {
   return `https://${deployment.region}.console.aws.amazon.com/systems-manager/session-manager/${deployment.instanceId}?region=${deployment.region}`;
+}
+
+export function ubuntuSessionCommand(deployment: AwsPaseoDeployment) {
+  return `aws ssm start-session --region ${deployment.region} --target ${deployment.instanceId} --document-name AWS-StartInteractiveCommand --parameters '{"command":["sudo -iu ubuntu"]}'`;
+}
+
+export function orphanStackUrl(orphan: AwsOrphanStack) {
+  return `https://${orphan.region}.console.aws.amazon.com/cloudformation/home?region=${orphan.region}#/stacks/stackinfo?stackId=${encodeURIComponent(orphan.stackId)}`;
 }
 
 export function AwsAccountsPanel({ onAdd }: { onAdd(): void }) {
@@ -154,9 +172,27 @@ export function AwsAccountsPanel({ onAdd }: { onAdd(): void }) {
   const deployments = snapshot.awsDeployments ?? [];
   const [deleting, setDeleting] = useState<AwsPaseoDeployment | null>(null);
   const [disconnecting, setDisconnecting] = useState<AwsAccountConnection | null>(null);
+  const [orphanDeleting, setOrphanDeleting] = useState<AwsOrphanStack | null>(null);
+  const [orphanScan, setOrphanScan] = useState<AwsOrphanScan | null>(null);
+  const [scanning, setScanning] = useState(false);
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const connectedAccountKey = accounts.filter((item) => item.state === "connected").map((item) => item.id).sort().join(":");
+
+  const scanOrphans = useCallback(async () => {
+    if (!connectedAccountKey) { setOrphanScan(null); return; }
+    setScanning(true);
+    try {
+      const response = await fetch("/api/aws/orphans", { cache: "no-store" });
+      const value = await response.json().catch(() => ({})) as AwsOrphanScan & { error?: string };
+      if (!response.ok) throw new Error(value.error ?? "Could not check AWS infrastructure");
+      setOrphanScan(value);
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Could not check AWS infrastructure"); }
+    finally { setScanning(false); }
+  }, [connectedAccountKey]);
+
+  useEffect(() => { void scanOrphans(); }, [scanOrphans]);
 
   async function deploymentAction(deployment: AwsPaseoDeployment, action: "retry" | "delete") {
     setBusy(deployment.id); setError("");
@@ -174,12 +210,28 @@ export function AwsAccountsPanel({ onAdd }: { onAdd(): void }) {
     finally { setBusy(""); }
   }
 
+  async function deleteOrphan(orphan: AwsOrphanStack) {
+    setBusy(orphan.stackId); setError("");
+    try {
+      const response = await fetch("/api/aws/orphans", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ awsAccountId: orphan.awsAccountId, region: orphan.region, stackName: orphan.stackName, confirmation }) });
+      const value = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(value.error ?? "Could not delete the orphaned stack");
+      setOrphanScan((current) => current ? { ...current, orphans: current.orphans.filter((item) => item.stackId !== orphan.stackId) } : current);
+      setOrphanDeleting(null); setConfirmation("");
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Could not delete the orphaned stack"); }
+    finally { setBusy(""); }
+  }
+
   return <div className="aws-accounts-panel">
     {error && <div className="banner error" role="alert">{error}</div>}
+    {connectedAccountKey && <div className="aws-scan-status"><div>{scanning ? <LoaderCircle className="spinning"/> : orphanScan?.orphans.length ? <AlertTriangle/> : <Check/>}<span><strong>{scanning ? "Checking AWS Infrastructure" : orphanScan?.orphans.length ? `${orphanScan.orphans.length} Unlinked ${orphanScan.orphans.length === 1 ? "Stack" : "Stacks"} Found` : "AWS Infrastructure Checked"}</strong><small>{scanning ? "Comparing managed stacks with Agent God Mode records across supported regions." : orphanScan?.orphans.length ? "Review infrastructure that is no longer linked to an Agent Instance record." : "No unlinked Agent Instance stacks were found."}</small></span></div><button className="button" disabled={scanning} onClick={() => void scanOrphans()}>{scanning ? <LoaderCircle className="spinning"/> : <RefreshCw/>}Scan Again</button></div>}
+    {orphanScan?.orphans.length ? <section className="aws-orphan-alert" aria-labelledby="aws-orphan-title"><header><AlertTriangle/><div><strong id="aws-orphan-title">Unlinked AWS Infrastructure</strong><small>These tagged Agent God Mode stacks exist in AWS but have no active deployment record. Delete only stacks you no longer need.</small></div></header>{orphanScan.orphans.map((orphan) => <div className="aws-orphan-row" key={orphan.stackId}><Server/><span><strong>{orphan.stackName}</strong><small>{orphan.awsAccountName} · {orphan.region} · {orphan.stackStatus}{orphan.instanceId ? ` · ${orphan.instanceId}` : ""}</small></span><a className="button" href={orphanStackUrl(orphan)} target="_blank" rel="noreferrer">View in AWS<ExternalLink/></a>{orphan.stackStatus === "DELETE_IN_PROGRESS" ? <i>Deletion in Progress</i> : <button className="button danger" onClick={() => { setOrphanDeleting(orphan); setConfirmation(""); }}>Delete Orphan Stack</button>}</div>)}</section> : null}
+    {orphanScan?.warnings.length ? <div className="banner warning" role="status"><strong>Some AWS Regions Could Not Be Checked.</strong> {orphanScan.warnings.map((warning) => `${warning.awsAccountName} ${warning.region}: ${warning.message}`).join(" · ")}</div> : null}
     {!accounts.length && <div className="empty-connection"><Cloud/><div><strong>No AWS Accounts Connected</strong><small>Connect with short-lived credentials to deploy and manage an Agent Instance without AWS access keys.</small></div></div>}
-    {accounts.map((account) => { const retained = deployments.filter((item) => item.awsAccountId === account.id && item.state !== "deleted"); return <div className="aws-account-group" key={account.id}><header><div className="connection-icon"><Cloud/></div><span><strong>{account.name}</strong><small>{account.accountId ? `AWS account ${account.accountId}` : "AWS role setup is incomplete"}</small></span><i className={account.state}>{account.state}</i>{account.state !== "connected" && <button className="button" onClick={onAdd}>Finish Setup</button>}<button className="icon-button" aria-label={`Disconnect ${account.name}`} title={retained.length ? "Delete this account’s deployments first" : "Disconnect AWS account"} disabled={retained.length > 0} onClick={() => { setDisconnecting(account); setConfirmation(""); }}><X/></button></header>{retained.map((deployment) => <div className="aws-deployment-row" key={deployment.id}><Server/><span><strong>{deployment.name}</strong><small>{deployment.region} · {deployment.instanceType} · {deployment.volumeSize} GB · {deployment.stackName}</small>{deployment.failureDetail && <small className="error-text">{deployment.failureDetail}</small>}</span><i className={deployment.state}>{deployment.state.replaceAll("-", " ")}</i>{deployment.state === "ready" && deployment.instanceId && <a className="button" href={sessionUrl(deployment)} target="_blank" rel="noreferrer"><Terminal/>Open Terminal</a>}{deployment.state === "failed" && <button className="button" disabled={busy === deployment.id} onClick={() => void deploymentAction(deployment, "retry")}>Retry</button>}{!["creating", "waiting-for-ssm", "pairing", "deleting"].includes(deployment.state) && <button className="button danger" onClick={() => { setDeleting(deployment); setConfirmation(""); }}>Delete</button>}</div>)}</div>; })}
+    {accounts.map((account) => { const retained = deployments.filter((item) => item.awsAccountId === account.id && item.state !== "deleted"); return <div className="aws-account-group" key={account.id}><header><div className="connection-icon"><Cloud/></div><span><strong>{account.name}</strong><small>{account.accountId ? `AWS account ${account.accountId}` : "AWS role setup is incomplete"}</small></span><i className={account.state}>{account.state}</i>{account.state !== "connected" && <button className="button" onClick={onAdd}>Finish Setup</button>}<button className="icon-button" aria-label={`Disconnect ${account.name}`} title={retained.length ? "Delete this account’s deployments first" : "Disconnect AWS account"} disabled={retained.length > 0} onClick={() => { setDisconnecting(account); setConfirmation(""); }}><X/></button></header>{retained.map((deployment) => <div className="aws-deployment-row" key={deployment.id}><Server/><span><strong>{deployment.name}</strong><small>{deployment.region} · {deployment.instanceType} · {deployment.volumeSize} GB · {deployment.stackName}</small>{deployment.failureDetail && <small className="error-text">{deployment.failureDetail}</small>}</span><i className={deployment.state}>{deployment.state.replaceAll("-", " ")}</i>{deployment.state === "ready" && deployment.instanceId && <CopyUbuntuSessionButton deployment={deployment}/>} {deployment.state === "failed" && <button className="button" disabled={busy === deployment.id} onClick={() => void deploymentAction(deployment, "retry")}>Retry</button>}{!["creating", "waiting-for-ssm", "pairing", "deleting"].includes(deployment.state) && <button className="button danger" onClick={() => { setDeleting(deployment); setConfirmation(""); }}>Delete</button>}</div>)}</div>; })}
     <div className="add-host-row"><div><Cloud/><span><strong>Deploy Through Your AWS Account</strong><small>Use OIDC and a scoped IAM role. Agent God Mode never stores AWS access keys.</small></span></div><button className="primary" onClick={onAdd}>Connect or Deploy<ArrowRight/></button></div>
     {deleting && <div className="nested-confirm"><div><strong>Delete {deleting.name}?</strong><p>This deletes the CloudFormation stack, terminates the EC2 instance, and permanently destroys its encrypted {deleting.volumeSize} GB volume. Type <code>{deleting.name}</code> to confirm.</p></div><input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoFocus/><div><button className="button" onClick={() => setDeleting(null)}>Cancel</button><button className="button danger" disabled={confirmation !== deleting.name || busy === deleting.id} onClick={() => void deploymentAction(deleting, "delete")}>Delete Infrastructure</button></div></div>}
+    {orphanDeleting && <div className="nested-confirm"><div><strong>Delete Orphan Stack?</strong><p>This asks CloudFormation to delete <code>{orphanDeleting.stackName}</code>, terminate its EC2 instance, and permanently destroy attached storage. Type the complete stack name to confirm.</p></div><input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoFocus spellCheck={false}/><div><button className="button" onClick={() => setOrphanDeleting(null)}>Cancel</button><button className="button danger" disabled={confirmation !== orphanDeleting.stackName || busy === orphanDeleting.stackId} onClick={() => void deleteOrphan(orphanDeleting)}>{busy === orphanDeleting.stackId ? <LoaderCircle className="spinning"/> : null}Delete Orphan Stack</button></div></div>}
     {disconnecting && <div className="nested-confirm"><div><strong>Disconnect {disconnecting.name}?</strong><p>Agent God Mode will delete its encrypted connection secret. To completely revoke access, also delete the <code>agent-god-mode-access-*</code> stack in AWS. Type <code>{disconnecting.name}</code> to confirm.</p></div><input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} autoFocus/><div><button className="button" onClick={() => setDisconnecting(null)}>Cancel</button><button className="button danger" disabled={confirmation !== disconnecting.name || busy === disconnecting.id} onClick={() => void disconnectAccount(disconnecting)}>Disconnect Account</button></div></div>}
   </div>;
 }
