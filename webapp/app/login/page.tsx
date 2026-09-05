@@ -46,6 +46,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               formFieldInput: "clerk-field-input",
               formButtonPrimary: "clerk-primary-button",
               footer: "clerk-footer",
+              footerItem: "clerk-footer-item",
               footerAction: "clerk-sign-up-hidden",
             },
           }}
