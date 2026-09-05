@@ -4,7 +4,7 @@ import { workstreamStatuses, type RoleConfig, type WorkstreamStatus } from "@age
 import { Octokit } from "@octokit/rest";
 import { getGithubAccessToken } from "@/lib/github";
 import { jsonError, readJson } from "@/lib/http";
-import { startAgentSynchronization, startAgentWorkflow, startIndependentReview, startPullRequestReconciliation, startWorkstreamWorkflow } from "@/lib/orchestration";
+import { startAgentSynchronization, startBuilderWorkflow, startIndependentReview, startPullRequestReconciliation, startWorkstreamWorkflow } from "@/lib/orchestration";
 import { withPaseoClient, withPaseoDaemon } from "@/lib/paseo";
 import { requireUser } from "@/lib/supabase/server";
 
@@ -77,8 +77,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       await supabase.from("timeline_items").update({ content: JSON.stringify({ agentId: body.agentId, requestId: body.requestId, status: body.answers ? "answered" : "dismissed", questions: question.prompts, answers: body.answers }) }).eq("id", `question:${question.id}`);
       await startAgentSynchronization(user.id, id, body.agentId);
     } else if (body.action === "build") {
-      if (!workstream.accepted_plan) throw new Error("Mark a plan implementation-ready before starting the build");
-      await startAgentWorkflow(user.id, id, "builder", body.roleConfig);
+      await startBuilderWorkflow(user.id, id, body.roleConfig);
     } else if (body.action === "review-fix") {
       const { data: builder } = await supabase.from("agent_runs").select("paseo_agent_id").eq("user_id", user.id).eq("workstream_id", id).eq("role", "builder").order("created_at", { ascending: false }).limit(1).single();
       if (!builder?.paseo_agent_id) throw new Error("Start the builder before Review & Fix");
