@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowRight, Bot, Check, Cloud, ExternalLink, Github, Laptop, Server, ShieldCheck } from "lucide-react";
+import { ArrowRight, Bot, Check, Cloud, ExternalLink, Github, KeyRound, Laptop, Server, ShieldCheck } from "lucide-react";
 import appIcon from "../../resources/icon.png";
 import { onboardingState } from "@/lib/onboarding";
 import { AwsDeployControls } from "./aws-deploy-controls";
@@ -59,7 +59,9 @@ export function OnboardingPage({ awsTemplateUrl }: { awsTemplateUrl: string }) {
       </section>}
 
       {state.complete && <section className="onboarding-panel onboarding-complete">
-        <div className="onboarding-panel-icon"><Check/></div><span className="eyebrow">Setup Complete</span><h2>Your Control Center Is Ready.</h2><p>GitHub and your Agent Instance are connected. You can now create your first workstream.</p><Link className="primary onboarding-primary" href="/app">Open Dashboard<ArrowRight/></Link>
+        <div className="onboarding-panel-icon"><Check/></div><span className="eyebrow">Setup Complete</span><h2>Your Control Center Is Ready.</h2><p>GitHub and your Agent Instance are connected. Before starting work, sign in to the agent providers you want Paseo to use.</p>
+        <div className="onboarding-provider-auth"><KeyRound/><div><strong>Why Provider Sign-In Is Required</strong><p>Paseo coordinates the Claude Code, Codex, Cursor, and other supported CLIs installed on your Agent Instance; it does not include access to their models. Signing in connects each CLI to your existing subscription so agents can run under the provider access and usage terms you already control.</p><span>Provider sessions remain on your Agent Instance. Agent God Mode never receives or stores those passwords, access tokens, or subscription credentials.</span></div><Link className="button" href="/docs/setup#providers" target="_blank">Open Provider Sign-In Guide<ExternalLink/></Link></div>
+        <Link className="primary onboarding-primary" href="/app">Open Dashboard<ArrowRight/></Link>
       </section>}
     </div>
     {paseoWizardOpen && <PaseoSetupWizard request={request} onClose={() => setPaseoWizardOpen(false)}/>} 

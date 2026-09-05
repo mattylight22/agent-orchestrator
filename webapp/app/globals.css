@@ -568,6 +568,12 @@ tr:hover .delete-trigger, .delete-trigger:focus-visible { opacity: 1; color: var
 .onboarding-cost > small { margin-top: 3px; color: var(--text-3); font-size: 10px; line-height: 1.4; }
 .onboarding-options article > .button, .onboarding-options article > button { width: 100%; }
 .onboarding-help { margin-top: 18px; display: flex; align-items: center; justify-content: space-between; gap: 18px; color: var(--text-3); font-size: 11px; text-align: left; }
+.onboarding-provider-auth { margin: 0 auto 24px; padding: 17px; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: start; gap: 13px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); text-align: left; }
+.onboarding-provider-auth > svg { width: 20px; height: 20px; color: var(--brand); }
+.onboarding-provider-auth > div { display: grid; gap: 5px; }
+.onboarding-provider-auth p { margin: 0; color: var(--text-2); font-size: 12px; line-height: 1.55; }
+.onboarding-provider-auth span { color: var(--text-3); font-size: 11px; line-height: 1.5; }
+.onboarding-provider-auth > .button { align-self: center; white-space: nowrap; }
 .onboarding-help a { display: inline-flex; align-items: center; gap: 5px; color: var(--brand); white-space: nowrap; font-weight: 650; }
 .onboarding-help svg { width: 12px; }
 .onboarding-complete .onboarding-panel-icon { background: color-mix(in srgb,var(--green) 13%,var(--surface)); color: var(--green); }
@@ -848,6 +854,8 @@ tr:hover .delete-trigger, .delete-trigger:focus-visible { opacity: 1; color: var
   .aws-paths { grid-template-columns: 1fr; }
   .verify-grid { grid-template-columns: 1fr; }
   .onboarding-shell { padding-top: 48px; }
+  .onboarding-provider-auth { grid-template-columns: auto minmax(0,1fr); }
+  .onboarding-provider-auth > .button { grid-column: 1 / -1; width: 100%; }
   .app-shell { display: block; padding-top: 48px; }
   .main-area { display: block; }
   .mobile-bar { display: flex; position: fixed; inset: 0 0 auto; height: 48px; background: color-mix(in srgb, var(--surface) 91%, transparent); backdrop-filter: blur(20px); border-bottom: 1px solid var(--line); z-index: 25; align-items: center; justify-content: space-between; padding: 0 10px; }
