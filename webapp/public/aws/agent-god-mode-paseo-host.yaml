@@ -157,8 +157,11 @@ Outputs:
     Description: EC2 instance created for Paseo.
     Value: !Ref PaseoHost
   SessionManagerCommand:
-    Description: Authenticate the provider CLIs without opening an inbound SSH port.
-    Value: !Sub "aws ssm start-session --target ${PaseoHost} --region ${AWS::Region}"
+    Description: Open a Session Manager shell directly as the ubuntu agent user.
+    Value: !Sub >-
+      aws ssm start-session --target ${PaseoHost} --region ${AWS::Region}
+      --document-name AWS-StartInteractiveCommand
+      --parameters '{"command":["sudo -iu ubuntu"]}'
   BootstrapLog:
     Description: Inspect this file if an installation step fails.
     Value: /var/log/agent-god-mode-bootstrap.log
