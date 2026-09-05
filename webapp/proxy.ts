@@ -1,28 +1,13 @@
-import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
-import { getSupabasePublicConfig } from "./lib/supabase/config";
+import { clerkMiddleware } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 import { isPublicPath, safeProductDestination } from "./lib/routes";
 
-export async function proxy(request: NextRequest) {
+export default clerkMiddleware(async (auth, request) => {
   const pathname = request.nextUrl.pathname;
-  if (pathname.startsWith("/.well-known/workflow/")) {
-    return NextResponse.next({ request });
-  }
+  if (pathname.startsWith("/.well-known/workflow/")) return NextResponse.next();
 
-  let response = NextResponse.next({ request });
-  const { url, publishableKey } = getSupabasePublicConfig();
-  const supabase = createServerClient(url, publishableKey, {
-    cookies: {
-      getAll: () => request.cookies.getAll(),
-      setAll(values) {
-        values.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request });
-        values.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
-      },
-    },
-  });
-  const { data } = await supabase.auth.getUser();
-  if (!data.user && !isPublicPath(pathname)) {
+  const { userId } = await auth();
+  if (!userId && !isPublicPath(pathname)) {
     if (pathname.startsWith("/api/")) {
       return NextResponse.json({ error: "AUTH_REQUIRED" }, { status: 401 });
     }
@@ -31,14 +16,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  if (data.user && pathname === "/login") {
-    const requested = request.nextUrl.searchParams.get("next");
-    const destination = safeProductDestination(requested);
-    return NextResponse.redirect(new URL(destination, request.url));
+  if (userId && pathname === "/login") {
+    return NextResponse.redirect(new URL(safeProductDestination(request.nextUrl.searchParams.get("next")), request.url));
   }
-  return response;
-}
+  return NextResponse.next();
+});
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.png).*)"],
+  matcher: [
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    "/(api|trpc)(.*)",
+    "/__clerk/(.*)",
+  ],
 };

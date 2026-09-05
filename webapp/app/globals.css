@@ -493,6 +493,14 @@ tr:hover .delete-trigger, .delete-trigger:focus-visible { opacity: 1; color: var
 .login-panel form > small { text-align: center; color: var(--text-3); }
 .login-submit { margin-top: 6px; height: 42px; }
 .login-submit svg { margin-left: auto; }
+.clerk-login-panel { padding: 0; border: 0; background: transparent; box-shadow: none; }
+.clerk-root, .clerk-card-box { width: 100%; }
+.clerk-card-box { box-shadow: none; }
+.clerk-card { width: 100%; border: 1px solid var(--line); box-shadow: var(--shadow); }
+.clerk-footer { background: transparent; }
+.clerk-sign-up-hidden { display: none !important; }
+.clerk-auth-state { min-height: 180px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text-2); box-shadow: var(--shadow); font-weight: 600; }
+.clerk-auth-state.error { color: var(--red); padding: 32px; text-align: center; }
 .password-requirement { display: flex; align-items: center; gap: 6px; margin-top: -4px; color: var(--text-3); font-size: 11px; }
 .password-requirement svg { width: 13px; height: 13px; color: var(--green); }
 
