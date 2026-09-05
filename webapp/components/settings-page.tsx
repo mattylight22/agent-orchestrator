@@ -2,14 +2,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Bot, Check, Cloud, Github, KeyRound, Link2, LoaderCircle, LockKeyhole, Palette, Plus, RadioTower, RefreshCw, Server, Shield, Unplug, Wifi, X } from "lucide-react";
 import type { AgentRole, AppSettings, PaseoHost, PaseoTransport, ProviderModel, RoleConfig } from "@agent-lens/domain";
-import { useRouter } from "next/navigation";
+import { useClerk } from "@clerk/nextjs";
 import { useAgentLens } from "./snapshot-provider";
 import { validateBrowserTailscaleConnection } from "@/lib/paseo-browser";
 import { AwsAccountWizard, AwsAccountsPanel } from "./aws-account-wizard";
 
 export function SettingsPage() {
+  const { signOut } = useClerk();
   const { snapshot, request, refresh } = useAgentLens();
-  const router = useRouter();
   const [busy, setBusy] = useState("");
   const [awsWizardOpen, setAwsWizardOpen] = useState(false);
   const [settings, setSettings] = useState(snapshot.settings);
@@ -115,7 +115,7 @@ export function SettingsPage() {
       <SettingsSection id="paseo" icon={<Server/>} title="Agent Instances" description="Connect each instance through Relay or Tailscale, or deploy one in AWS."><PaseoHosts hosts={snapshot.hosts} providerCatalogs={snapshot.providerCatalogs} request={request} onDeployAws={() => setAwsWizardOpen(true)}/></SettingsSection>
       <SettingsSection id="aws" icon={<Cloud/>} title="AWS Accounts" description="Deploy and manage always-on Agent Instances with short-lived, scoped AWS access."><AwsAccountsPanel onAdd={() => setAwsWizardOpen(true)}/></SettingsSection>
       {catalogs.length > 0 && <SettingsSection icon={<Bot/>} title="Agent Defaults" description="Choose from providers authenticated on your connected Agent Instances."><div className="role-grid">{(["planner", "builder", "reviewer"] as AgentRole[]).map((role) => <RoleEditor role={role} key={role} config={settings.globalRoles[role]} catalogs={catalogs} onChange={(config) => update({ globalRoles: { ...settingsRef.current.globalRoles, [role]: config } })}/>)}</div></SettingsSection>}
-      <SettingsSection icon={<KeyRound/>} title="Account" description="Manage your Agent God Mode account."><div className="connection-row"><div><strong>Signed In as {snapshot.cloud.email}</strong><small>Your changes are saved automatically.</small></div><span className="connected"><Check/>Connected</span><button className="button danger" onClick={() => void request("/api/auth/sign-out", { method: "POST" }).then(() => { router.push("/login"); router.refresh(); })}>Sign Out</button></div></SettingsSection>
+      <SettingsSection icon={<KeyRound/>} title="Account" description="Manage your Agent God Mode account."><div className="connection-row"><div><strong>Signed In as {snapshot.cloud.email}</strong><small>Your changes are saved automatically.</small></div><span className="connected"><Check/>Connected</span><button className="button danger" onClick={() => void signOut({ redirectUrl: "/login" })}>Sign Out</button></div></SettingsSection>
     </div>
     {awsWizardOpen && <AwsAccountWizard onClose={() => setAwsWizardOpen(false)}/>}
   </section>;

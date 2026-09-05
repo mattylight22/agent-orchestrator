@@ -1,19 +1,41 @@
-"use client";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight } from "lucide-react";
-import appIcon from "../../../resources/icon.png";
+import { ClerkFailed, ClerkLoaded, ClerkLoading, SignIn } from "@clerk/nextjs";
+import { ArrowLeft } from "lucide-react";
 import { safeProductDestination } from "@/lib/routes";
 
-export default function LoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState(""); const [password, setPassword] = useState("");
-  const [error, setError] = useState(""); const [busy, setBusy] = useState(false);
-  useEffect(() => {
-    const reason = new URLSearchParams(window.location.search).get("error");
-    if (reason === "invite-expired") setError("This invitation is invalid or has expired. Ask for a new invitation.");
-  }, []);
-  async function submit(event: React.FormEvent) { event.preventDefault(); setBusy(true); setError(""); try { const response = await fetch("/api/auth/sign-in", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) }); const value = await response.json(); if (!response.ok) throw new Error(value.error ?? "Authentication failed"); const requested = new URLSearchParams(window.location.search).get("next"); router.push(safeProductDestination(requested)); router.refresh(); } catch (error) { setError(error instanceof Error ? error.message : "Authentication failed"); } finally { setBusy(false); } }
-  return <main className="login-page"><Link className="login-back" href="/"><ArrowLeft/>Back to Agent God Mode</Link><section className="login-panel"><form onSubmit={submit}><img src={appIcon.src} alt="" className="login-icon"/><span className="eyebrow">Welcome Back</span><h1>Sign In to Agent God Mode</h1><p>Enter your email and password to open your workstreams.</p>{error && <div className="banner error" role="alert">{error}</div>}<label>Email<input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required/></label><label>Password<input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} required/></label><button className="primary login-submit" disabled={busy}>{busy ? "Signing In…" : "Sign In"}<ArrowRight/></button><small>Account creation is currently invite-only.</small></form></section></main>;
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+  const destination = safeProductDestination((await searchParams).next);
+  return <main className="login-page">
+    <Link className="login-back" href="/"><ArrowLeft/>Back to Agent God Mode</Link>
+    <section className="login-panel clerk-login-panel">
+      <ClerkLoading><div className="clerk-auth-state">Loading Sign-In…</div></ClerkLoading>
+      <ClerkFailed><div className="clerk-auth-state error" role="alert">Sign-in is temporarily unavailable. Please try again shortly.</div></ClerkFailed>
+      <ClerkLoaded>
+        <SignIn
+          routing="hash"
+          forceRedirectUrl={destination}
+          fallbackRedirectUrl="/app"
+          appearance={{
+            variables: {
+              colorPrimary: "var(--brand)",
+              colorForeground: "var(--text)",
+              colorMutedForeground: "var(--text-2)",
+              colorBackground: "var(--surface)",
+              colorInput: "var(--surface-2)",
+              colorInputForeground: "var(--text)",
+              borderRadius: "10px",
+              fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif",
+            },
+            elements: {
+              rootBox: "clerk-root",
+              cardBox: "clerk-card-box",
+              card: "clerk-card",
+              footer: "clerk-footer",
+              footerAction: "clerk-sign-up-hidden",
+            },
+          }}
+        />
+      </ClerkLoaded>
+    </section>
+  </main>;
 }

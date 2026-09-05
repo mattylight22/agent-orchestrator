@@ -1,6 +1,5 @@
 "use client";
 import type { AgentLensApi, AppSettings, AppSnapshot, CreateHostInput, CreateWorkstreamInput, PaseoHost, PlanComment, PlanStatus, Repository, RoleConfig, Workstream, WorkstreamStatus } from "@agent-lens/domain";
-import { createSupabaseBrowserClient } from "./supabase/client";
 
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) } });
@@ -17,10 +16,10 @@ export class WebAgentLensApi implements AgentLensApi {
   async connectHost(hostId: string) { await json(`/api/paseo/hosts/${hostId}/refresh`, { method: "POST" }); }
   async startGithubDeviceFlow() { window.location.assign("/api/github/connect"); }
   async disconnectGithub() { await json("/api/github/disconnect", { method: "POST" }); }
-  async signInSupabase(email: string, password: string) { await json("/api/auth/sign-in", { method: "POST", body: JSON.stringify({ email, password }) }); }
-  async signUpSupabase(email: string, password: string) { return json<{ confirmationRequired: boolean }>("/api/auth/sign-up", { method: "POST", body: JSON.stringify({ email, password }) }); }
-  async requestSupabasePasswordReset(email: string) { const { error } = await createSupabaseBrowserClient().auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}/auth/reset` }); if (error) throw error; }
-  async signOutSupabase() { await json("/api/auth/sign-out", { method: "POST" }); }
+  async signInSupabase() { throw new Error("Web authentication is managed by Clerk"); }
+  async signUpSupabase(): Promise<{ confirmationRequired: boolean }> { throw new Error("Web authentication is managed by Clerk"); }
+  async requestSupabasePasswordReset() { throw new Error("Web authentication is managed by Clerk"); }
+  async signOutSupabase() { throw new Error("Web authentication is managed by Clerk"); }
   async syncSupabase() { await this.bootstrap(); }
   async refreshRepositories() { await json("/api/github/repositories", { method: "POST" }); return (await this.bootstrap()).repositories as Repository[]; }
   async refreshPaseoMappings() { const snapshot = await this.bootstrap(); await Promise.all(snapshot.hosts.map((host) => json(`/api/paseo/hosts/${host.id}/refresh`, { method: "POST" }))); }
@@ -40,7 +39,7 @@ export class WebAgentLensApi implements AgentLensApi {
   async completeReview(id: string) { await this.workstreamAction(id, "complete-review"); }
   async startIndependentReview(id: string) { await this.workstreamAction(id, "independent-review"); }
   async openExternal(url: string) { const value = new URL(url); if (value.protocol !== "https:" || (value.hostname !== "github.com" && !value.hostname.endsWith(".paseo.sh"))) throw new Error("That external link is not allowed"); window.open(value, "_blank", "noopener,noreferrer"); }
-  onSnapshot(handler: (snapshot: AppSnapshot) => void) { const supabase = createSupabaseBrowserClient(); const channel = supabase.channel(`agent-lens-api-${crypto.randomUUID()}`).on("postgres_changes", { event: "*", schema: "public" }, () => void this.bootstrap().then(handler)).subscribe(); return () => { void supabase.removeChannel(channel); }; }
+  onSnapshot(handler: (snapshot: AppSnapshot) => void) { const interval = window.setInterval(() => void this.bootstrap().then(handler).catch(() => undefined), 15_000); return () => window.clearInterval(interval); }
   onGithubVerification() { return () => undefined; }
   onToast() { return () => undefined; }
   private workstreamAction(id: string, action: string, payload: Record<string, unknown> = {}) { return json(`/api/workstreams/${id}/actions`, { method: "POST", body: JSON.stringify({ action, ...payload }) }); }

@@ -19,14 +19,14 @@ The desktop data path is `agent-lens/agent-lens.sqlite`. It is intentionally sep
 
 ### Next.js for Vercel
 
-The web application uses Supabase cookie authentication, GitHub App OAuth, Paseo's end-to-end encrypted relay, Supabase Realtime, and Vercel Workflows.
+The web application uses Clerk authentication, Clerk-authenticated Supabase Row Level Security, GitHub App OAuth, Paseo's end-to-end encrypted relay, Supabase Realtime, and Vercel Workflows.
 
 ```bash
 npm run dev:web
 npm run build:web
 ```
 
-Set Vercel's Root Directory to `webapp` and configure the variables documented in [`webapp/.env.example`](webapp/.env.example). Configure `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for the browser and SSR clients. The Supabase secret key, GitHub client secret, and 32-byte credential encryption key must only be configured in Vercel.
+Set Vercel's Root Directory to `webapp` and configure the variables documented in [`webapp/.env.example`](webapp/.env.example). Configure the Clerk publishable/secret keys and Supabase URL/publishable key. The Clerk secret key, Supabase secret key, GitHub client secret, and 32-byte credential encryption key must only be configured server-side. Complete the one-time Clerk/Supabase dashboard activation in [`webapp/CLERK_AUTH.md`](webapp/CLERK_AUTH.md).
 
 The GitHub callback is:
 
@@ -43,7 +43,7 @@ Relay and Tailscale can coexist on the same logical host. Agent Lens matches the
 
 ## Database
 
-Apply the migrations in [`supabase/migrations`](supabase/migrations) to the dedicated Supabase project before deployment. The initial destructive clean-schema migration discards the obsolete generic sync store, creates normalized orchestration tables, enables account-scoped Row Level Security, denies browser access to connection-secret tables, and enables Realtime for operational data. The following migration adds dual Relay/Tailscale transport support for installations that already applied the initial schema.
+Apply the migrations in [`supabase/migrations`](supabase/migrations) to the dedicated Supabase project before deployment. The Clerk migration preserves existing ownership UUIDs behind a private identity bridge, replaces `auth.uid()` policies with Clerk-subject-aware policies, and keeps credential tables unavailable to browser sessions.
 
 ## GitHub App permissions
 

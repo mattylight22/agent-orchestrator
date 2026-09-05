@@ -6,8 +6,6 @@ export function isPublicPath(pathname: string) {
     || pathname === "/login"
     || pathname === "/robots.txt"
     || pathname === "/sitemap.xml"
-    || pathname === "/api/auth/sign-in"
-    || pathname === "/auth/confirm"
     || pathname.startsWith("/auth/github/callback");
 }
 

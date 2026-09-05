@@ -3,8 +3,8 @@ import { isPublicPath, safeGithubConnectionDestination, safeProductDestination }
 
 describe("public web routes", () => {
   it("allows only the marketing and sign-in surfaces", () => {
-    expect(["/", "/product", "/security", "/docs/setup", "/login", "/robots.txt", "/sitemap.xml", "/api/auth/sign-in", "/auth/confirm"].every(isPublicPath)).toBe(true);
-    expect(["/app", "/app/plans", "/api/snapshot", "/settings", "/set-password", "/api/auth/set-password"].some(isPublicPath)).toBe(false);
+    expect(["/", "/product", "/security", "/docs/setup", "/login", "/robots.txt", "/sitemap.xml"].every(isPublicPath)).toBe(true);
+    expect(["/app", "/app/plans", "/api/snapshot", "/settings", "/set-password", "/api/auth/sign-in", "/auth/confirm"].some(isPublicPath)).toBe(false);
   });
 });
 

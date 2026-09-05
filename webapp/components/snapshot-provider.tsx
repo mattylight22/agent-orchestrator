@@ -1,5 +1,6 @@
 "use client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useSession } from "@clerk/nextjs";
 import type { AppSnapshot } from "@agent-lens/domain";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fetchBrowserTailscaleAgents } from "@/lib/paseo-browser";
@@ -35,6 +36,7 @@ const realtimeTables = [
 ] as const;
 
 export function SnapshotProvider({ initial, children }: { initial: AppSnapshot; children: React.ReactNode }) {
+  const { session } = useSession();
   const [snapshot, setSnapshot] = useState(initial);
   const [refreshing, setRefreshing] = useState(false);
   const [toast, setToast] = useState<SnapshotContextValue["toast"]>(null);
@@ -118,7 +120,8 @@ export function SnapshotProvider({ initial, children }: { initial: AppSnapshot; 
     return value as T;
   }, [refresh]);
   useEffect(() => {
-    const supabase = createSupabaseBrowserClient();
+    if (!session) return;
+    const supabase = createSupabaseBrowserClient(() => session.getToken());
     const channel = supabase.channel("agent-god-mode-account-data");
     for (const table of realtimeTables) {
       channel.on("postgres_changes", { event: "*", schema: "public", table }, () => scheduleBackgroundRefresh());
@@ -127,7 +130,7 @@ export function SnapshotProvider({ initial, children }: { initial: AppSnapshot; 
       if (status === "SUBSCRIBED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") scheduleBackgroundRefresh(0);
     });
     return () => { if (timer.current) clearTimeout(timer.current); void supabase.removeChannel(channel); };
-  }, [scheduleBackgroundRefresh]);
+  }, [scheduleBackgroundRefresh, session]);
   const hasActiveWork = useMemo(() => snapshot.workstreams.some((workstream) =>
     ["queued", "running"].includes(workstream.agentState) ||
     ["provisioning", "planning", "building", "review-fix", "independent-review"].includes(workstream.phase)
