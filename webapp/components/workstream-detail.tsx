@@ -8,6 +8,7 @@ import { useAgentLens } from "./snapshot-provider";
 import { Markdown } from "./markdown";
 import { PlanAnnotator, PlanReaderModal } from "./plan-reader-modal";
 import { StatusChip } from "./status-chip";
+import { workstreamRecoveryAction } from "@/lib/workstream-recovery";
 
 const stages = [
   ["Plan", ["provisioning", "planning", "ready"]], ["Build", ["building"]], ["Review & Fix", ["review-fix"]], ["Pull Request", ["pr-open"]], ["Independent Review", ["independent-review", "complete"]],
@@ -24,7 +25,9 @@ export function WorkstreamDetail({ id }: { id: string }) {
   if (!workstream) return <section className="page"><div className="empty-state standalone"><h2>Workstream Not Found</h2><Link className="button" href="/app">Back to Dashboard</Link></div></section>;
   const action = async (name: string, payload: Record<string, unknown> = {}) => { setBusy(name); try { await request(`/api/workstreams/${id}/actions`, { method: "POST", body: JSON.stringify({ action: name, ...payload }) }); } finally { setBusy(""); } };
   const stageIndex = Math.max(0, stages.findIndex(([, phases]) => (phases as readonly string[]).includes(workstream.phase)));
-  const primary = workstream.phase === "attention" && !workstream.workspaceId ? <button className="primary" onClick={() => void action("retry-provision")} disabled={Boolean(busy)}><RotateCcw/>Retry Provisioning</button>
+  const recovery = workstreamRecoveryAction(workstream);
+  const primary = recovery === "retry-provision" ? <button className="primary" onClick={() => void action("retry-provision")} disabled={Boolean(busy)}><RotateCcw/>Retry Provisioning</button>
+    : recovery === "retry-build" ? <button className="primary" onClick={() => void action("build")} disabled={Boolean(busy)}><RotateCcw/>Retry Build</button>
     : workstream.phase === "ready" ? <button className="primary" onClick={() => void action("build")} disabled={Boolean(busy)}><Play/>Start Build</button>
     : workstream.phase === "building" && workstream.agentState !== "running" ? <button className="primary" onClick={() => void action("review-fix")} disabled={Boolean(busy)}><ShieldCheck/>Review & Fix</button>
     : workstream.phase === "review-fix" && workstream.agentState !== "running" ? <button className="primary" onClick={() => void action("complete-review")} disabled={Boolean(busy)}><GitBranch/>Create Pull Request</button>

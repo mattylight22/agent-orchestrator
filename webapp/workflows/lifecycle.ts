@@ -101,8 +101,16 @@ async function launchAgent(userId: string, workstreamId: string, role: AgentRole
   "use step";
   const { workstream, settings } = await loadWorkstream(userId, workstreamId);
   if (!workstream.workspace_id) throw new Error("Paseo workspace has not been created");
-  const existing = await createSupabaseAdminClient().from("agent_runs").select("paseo_agent_id").eq("user_id", userId).eq("workstream_id", workstreamId).eq("role", role).order("created_at", { ascending: false }).limit(1).maybeSingle();
-  if (existing.data?.paseo_agent_id && role === "planner") return existing.data.paseo_agent_id;
+  const admin = createSupabaseAdminClient();
+  const existing = await admin.from("agent_runs").select("id,paseo_agent_id").eq("user_id", userId).eq("workstream_id", workstreamId).eq("role", role).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (existing.data?.paseo_agent_id) {
+    const now = new Date().toISOString();
+    await Promise.all([
+      admin.from("agent_runs").update({ state: "running", source_updated_at: now }).eq("user_id", userId).eq("id", existing.data.id),
+      admin.from("workstreams").update({ phase: role === "planner" ? "planning" : role === "builder" ? "building" : "independent-review", agent_state: "running", source_updated_at: now }).eq("id", workstreamId).eq("user_id", userId),
+    ]);
+    return existing.data.paseo_agent_id;
+  }
   const config = override ?? resolveRoleConfig(settings, workstream.host_id, role);
   const agentId = await withPaseoClient(userId, workstream.host_id, async (client) => {
     const snapshot = await waitForProviderSnapshot(client);
@@ -125,7 +133,6 @@ async function launchAgent(userId: string, workstreamId: string, role: AgentRole
   });
   const now = new Date().toISOString();
   const runId = randomUUID();
-  const admin = createSupabaseAdminClient();
   const { error } = await admin.from("agent_runs").insert({ id: runId, user_id: userId, workstream_id: workstreamId, role, paseo_agent_id: agentId, provider: config.provider, model: config.model, state: "running", created_at: now, source_updated_at: now });
   if (error) throw error;
   await admin.from("workstreams").update({ phase: role === "planner" ? "planning" : role === "builder" ? "building" : "independent-review", agent_state: "running", source_updated_at: now }).eq("id", workstreamId).eq("user_id", userId);

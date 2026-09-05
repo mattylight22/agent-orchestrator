@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { start } from "workflow/api";
 import type { AgentRole, RoleConfig } from "@agent-lens/domain";
 import { createSupabaseAdminClient } from "./supabase/admin";
+import { PLAN_ACCEPTED_MESSAGE, resolvePlanPermission } from "./plan-permission";
 import { independentReviewWorkflow, provisionWorkstreamWorkflow, pullRequestReconciliationWorkflow, runAgentWorkflow, synchronizeExistingAgentWorkflow } from "@/workflows/lifecycle";
 
 export async function startWorkstreamWorkflow(userId: string, workstreamId: string) {
@@ -11,6 +12,27 @@ export async function startWorkstreamWorkflow(userId: string, workstreamId: stri
 
 export async function startAgentWorkflow(userId: string, workstreamId: string, role: AgentRole, override?: RoleConfig) {
   return startPhase(userId, workstreamId, role, runAgentWorkflow, [role, override]);
+}
+
+export async function startBuilderWorkflow(userId: string, workstreamId: string, override?: RoleConfig) {
+  const admin = createSupabaseAdminClient();
+  const [{ data: workstream, error: workstreamError }, { data: plan, error: planError }] = await Promise.all([
+    admin.from("workstreams").select("host_id,accepted_plan").eq("user_id", userId).eq("id", workstreamId).single(),
+    admin.from("plans").select("source_agent_id,source_permission_id").eq("user_id", userId).eq("workstream_id", workstreamId).is("deleted_at", null).maybeSingle(),
+  ]);
+  if (workstreamError || planError || !workstream) throw workstreamError ?? planError ?? new Error("Workstream not found");
+  if (!workstream.accepted_plan) throw new Error("Mark a plan implementation-ready before starting the build");
+  const resolved = await resolvePlanPermission({ userId, hostId: workstream.host_id, agentId: plan?.source_agent_id, permissionId: plan?.source_permission_id, message: PLAN_ACCEPTED_MESSAGE });
+  if (resolved && plan?.source_agent_id) await startAgentSynchronization(userId, workstreamId, plan.source_agent_id);
+  const now = new Date().toISOString();
+  const { error: phaseError } = await admin.from("workstreams").update({ phase: "building", agent_state: "queued", source_updated_at: now }).eq("user_id", userId).eq("id", workstreamId);
+  if (phaseError) throw phaseError;
+  try {
+    return await startAgentWorkflow(userId, workstreamId, "builder", override);
+  } catch (error) {
+    await admin.from("workstreams").update({ phase: "ready", agent_state: "idle", source_updated_at: new Date().toISOString() }).eq("user_id", userId).eq("id", workstreamId);
+    throw error;
+  }
 }
 
 export async function startAgentSynchronization(userId: string, workstreamId: string, agentId: string) {
