@@ -493,13 +493,25 @@ tr:hover .delete-trigger, .delete-trigger:focus-visible { opacity: 1; color: var
 .login-panel form > small { text-align: center; color: var(--text-3); }
 .login-submit { margin-top: 6px; height: 42px; }
 .login-submit svg { margin-left: auto; }
-.clerk-login-panel { padding: 0; border: 0; background: transparent; box-shadow: none; }
+.clerk-login-panel { width: min(420px,100%); padding: 0; overflow: hidden; }
+.login-auth-header { padding: 34px 36px 22px; display: grid; justify-items: center; text-align: center; }
+.login-auth-header img { width: 48px; height: 48px; margin-bottom: 16px; border-radius: 10px; object-fit: cover; }
+.login-auth-header .eyebrow { margin-bottom: 9px; }
+.login-auth-header h1 { margin: 0; font-size: 29px; }
+.login-auth-header p { margin: 7px 0 0; color: var(--text-2); }
 .clerk-root, .clerk-card-box { width: 100%; }
-.clerk-card-box { box-shadow: none; }
-.clerk-card { width: 100%; border: 1px solid var(--line); box-shadow: var(--shadow); }
-.clerk-footer { background: transparent; }
+.clerk-card-box { box-shadow: none !important; }
+.clerk-card { width: 100%; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; }
+.clerk-native-header, .clerk-native-logo { display: none !important; }
+.clerk-main { width: 100% !important; padding: 0 36px 32px !important; }
+.clerk-form, .clerk-field-row, .clerk-field { width: 100% !important; }
+.clerk-field-input { width: 100% !important; min-height: 44px !important; border: 1px solid var(--line-strong) !important; border-radius: 8px !important; background: var(--surface) !important; box-shadow: none !important; }
+.clerk-field-input:focus { border-color: var(--brand) !important; box-shadow: 0 0 0 3px var(--brand-soft) !important; }
+.clerk-primary-button { width: 100% !important; min-height: 44px !important; border: 0 !important; border-radius: 8px !important; background: var(--brand) !important; color: var(--on-brand) !important; box-shadow: none !important; font-weight: 700 !important; }
+.clerk-primary-button:hover { background: var(--brand-hover) !important; }
+.clerk-footer { margin: 0 !important; padding: 13px 20px !important; border-top: 1px solid var(--line) !important; background: var(--surface-2) !important; }
 .clerk-sign-up-hidden { display: none !important; }
-.clerk-auth-state { min-height: 180px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--text-2); box-shadow: var(--shadow); font-weight: 600; }
+.clerk-auth-state { min-height: 160px; display: grid; place-items: center; border-top: 1px solid var(--line); background: var(--surface); color: var(--text-2); font-weight: 600; }
 .clerk-auth-state.error { color: var(--red); padding: 32px; text-align: center; }
 .password-requirement { display: flex; align-items: center; gap: 6px; margin-top: -4px; color: var(--text-3); font-size: 11px; }
 .password-requirement svg { width: 13px; height: 13px; color: var(--green); }
